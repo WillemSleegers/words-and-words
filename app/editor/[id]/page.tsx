@@ -9,6 +9,9 @@ import { EditorToolbar } from '@/components/editor/EditorToolbar'
 import { useDocumentEditor } from '@/hooks/use-document-editor'
 import { KeyboardShortcutsDialog } from '@/components/editor/KeyboardShortcutsDialog'
 import { CommandPalette } from '@/components/editor/CommandPalette'
+import { VariablesDialog } from '@/components/editor/VariablesDialog'
+import type { Variable } from '@/lib/documents/types'
+import type { VariableNodeStorage } from '@/lib/editor/extensions/variable-node'
 import { useSettings } from '@/hooks/use-settings'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -26,6 +29,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showVariables, setShowVariables] = useState(false)
   const { settings, updateSettings } = useSettings()
 
   const editor = useDocumentEditor({
@@ -102,6 +106,34 @@ export default function EditorPage({ params }: EditorPageProps) {
     setHasUnsavedChanges(true)
   }
 
+  async function handleVariablesChange(newVariables: Variable[]) {
+    if (!document) return
+
+    // Update editor storage so NodeViews can access current values
+    if (editor && !editor.isDestroyed) {
+      const storage = editor.storage as unknown as { variable: VariableNodeStorage }
+      storage.variable.variables = newVariables
+      // Force re-render of all variable nodes
+      editor.view.dispatch(editor.state.tr)
+    }
+
+    // Save to document
+    try {
+      await documentStorage.update(document.id, { variables: newVariables })
+      setDocument({ ...document, variables: newVariables })
+    } catch {
+      // Silent fail
+    }
+  }
+
+  // Sync variables to editor storage when document loads
+  useEffect(() => {
+    if (editor && document && !editor.isDestroyed) {
+      const storage = editor.storage as unknown as { variable: VariableNodeStorage }
+      storage.variable.variables = document.variables || []
+    }
+  }, [editor, document])
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -169,6 +201,18 @@ export default function EditorPage({ params }: EditorPageProps) {
         settings={settings}
         onSettingsChange={updateSettings}
         onShowShortcuts={() => setShowShortcuts(true)}
+        onShowVariables={() => setShowVariables(true)}
+        variables={document?.variables || []}
+        documentTitle={document?.title || 'Untitled'}
+        documentFont={document?.font || 'system'}
+      />
+
+      <VariablesDialog
+        open={showVariables}
+        onOpenChange={setShowVariables}
+        variables={document?.variables || []}
+        onVariablesChange={handleVariablesChange}
+        editor={editor}
       />
     </div>
   )

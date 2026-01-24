@@ -24,6 +24,7 @@ components/
     EditorContent.tsx           # Tiptap editor wrapper
     EditorToolbar.tsx           # Floating toolbar (top right, command palette button)
     KeyboardShortcutsDialog.tsx # Keyboard shortcuts help dialog
+    VariablesDialog.tsx         # Dialog for managing document variables
   ui/                           # shadcn/ui components
 hooks/
   use-document-editor.ts  # Tiptap editor hook with extensions
@@ -58,6 +59,24 @@ Settings are stored in localStorage and include:
 - Borderless design - the editor appears as "one giant white space"
 - Tiptap styles defined in `globals.css` under `.tiptap-editor`
 - Supports markdown shortcuts (e.g., `#` for heading, `**text**` for bold)
+
+### Document Variables
+
+Variables allow inserting dynamic placeholders that update throughout the document:
+
+- **Per-document scope**: Each document has its own variables stored in document metadata
+- **Variable Node**: Custom Tiptap atom node (`lib/editor/extensions/variable-node.ts`) that stores `variableId` and looks up value at render time
+- **NodeView rendering**: Variables display their current value and update automatically when the value changes
+- **Deleted handling**: Shows `[Deleted Variable]` in red if a variable is removed but still referenced
+- **Word export**: Variables resolve to their values when exporting to Word
+
+### Collapsible Headings
+
+Headings can be collapsed to hide content beneath them:
+
+- **Collapse toggle**: Chevron button appears on hover next to headings
+- **Command palette**: "Collapse Section" / "Expand Section" command for current heading
+- **Visual state**: Collapsed content uses `display: none` (no animations per CLAUDE.md guidelines)
 
 ### React Compiler
 

@@ -39,8 +39,14 @@ import {
   ChevronRight,
   ChevronLeft,
   Check,
+  FileDown,
+  ChevronsUpDown,
+  Variable,
 } from 'lucide-react'
+import { exportToWord } from '@/lib/export-to-word'
 import type { Settings as SettingsType } from '@/lib/settings'
+import type { FontFamily, Variable as VariableType } from '@/lib/documents/types'
+import type { CollapsibleHeadingsStorage } from '@/lib/editor/extensions/collapsible-headings'
 
 interface Command {
   id: string
@@ -59,9 +65,13 @@ interface CommandPaletteProps {
   settings: SettingsType
   onSettingsChange: (updates: Partial<SettingsType>) => void
   onShowShortcuts: () => void
+  onShowVariables: () => void
+  documentTitle: string
+  documentFont: FontFamily
+  variables: VariableType[]
 }
 
-type Page = null | 'font'
+type Page = null | 'font' | 'variables'
 
 const fonts: { id: string; label: string; fontFamily: string; description: string }[] = [
   { id: 'system', label: 'System Default', fontFamily: 'system-ui, -apple-system, sans-serif', description: 'Uses your system font' },
@@ -79,6 +89,10 @@ export function CommandPalette({
   settings,
   onSettingsChange,
   onShowShortcuts,
+  onShowVariables,
+  documentTitle,
+  documentFont,
+  variables,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState<Page>(null)
@@ -102,6 +116,83 @@ export function CommandPalette({
     editor?.chain().focus().setMark('textStyle', { fontFamily }).run()
     onOpenChange(false)
   }
+
+  function getCurrentSectionInfo() {
+    if (!editor) return null
+
+    const { doc, selection } = editor.state
+    const cursorPos = selection.from
+
+    // Find all headings and their positions
+    const headings: Array<{
+      pos: number
+      endPos: number
+      level: number
+      text: string
+      index: number
+    }> = []
+
+    let headingIndex = 0
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'heading') {
+        headings.push({
+          pos,
+          endPos: pos + node.nodeSize,
+          level: node.attrs.level as number,
+          text: node.textContent,
+          index: headingIndex,
+        })
+        headingIndex++
+      }
+    })
+
+    // Find the heading that contains the cursor (the nearest heading before cursor)
+    let currentHeading = null
+    for (let i = headings.length - 1; i >= 0; i--) {
+      if (headings[i].pos <= cursorPos) {
+        currentHeading = headings[i]
+        break
+      }
+    }
+
+    if (!currentHeading) return null
+
+    const key = `${currentHeading.level}-${currentHeading.index}-${currentHeading.text.slice(0, 50)}`
+    const editorStorage = editor.storage as unknown as { collapsibleHeadings: CollapsibleHeadingsStorage }
+    const storage = editorStorage.collapsibleHeadings
+    const isCollapsed = storage?.collapsedHeadings?.has(key) ?? false
+
+    return { heading: currentHeading, key, isCollapsed }
+  }
+
+  function toggleCurrentSectionCollapse() {
+    const sectionInfo = getCurrentSectionInfo()
+    if (!sectionInfo || !editor) return
+
+    const { heading, key } = sectionInfo
+    const editorStorage = editor.storage as unknown as { collapsibleHeadings: CollapsibleHeadingsStorage }
+    const storage = editorStorage.collapsibleHeadings
+
+    if (storage) {
+      if (storage.collapsedHeadings.has(key)) {
+        storage.collapsedHeadings.delete(key)
+      } else {
+        storage.collapsedHeadings.add(key)
+      }
+
+      // Force re-render
+      if (storage.editorView) {
+        storage.editorView.dispatch(
+          storage.editorView.state.tr.setMeta('collapsibleHeadingsUpdate', true)
+        )
+      }
+    }
+
+    // Move cursor to the end of the heading
+    editor.chain().focus().setTextSelection(heading.endPos - 1).run()
+  }
+
+  const currentSectionInfo = getCurrentSectionInfo()
 
   const commands: Command[] = [
     // Formatting
@@ -241,6 +332,30 @@ export function CommandPalette({
       group: 'Insert',
       keywords: ['url', 'href', 'anchor'],
     },
+    {
+      id: 'insert-variable',
+      label: 'Insert Variable',
+      icon: <Variable className="h-4 w-4" />,
+      action: () => {
+        if (variables.length === 0) {
+          onShowVariables()
+        } else {
+          setPage('variables')
+          setSearch('')
+        }
+      },
+      group: 'Insert',
+      keywords: ['placeholder', 'template', 'dynamic'],
+      hasSubmenu: variables.length > 0,
+    },
+    {
+      id: 'manage-variables',
+      label: 'Manage Variables',
+      icon: <Variable className="h-4 w-4" />,
+      action: () => onShowVariables(),
+      group: 'Insert',
+      keywords: ['placeholder', 'template', 'dynamic', 'edit'],
+    },
     // Actions
     {
       id: 'undo',
@@ -255,6 +370,26 @@ export function CommandPalette({
       icon: <Redo className="h-4 w-4" />,
       action: () => editor?.chain().focus().redo().run(),
       group: 'Actions',
+    },
+    {
+      id: 'export-word',
+      label: 'Export to Word',
+      icon: <FileDown className="h-4 w-4" />,
+      action: () => {
+        if (editor) {
+          exportToWord(editor, documentTitle, documentFont, variables)
+        }
+      },
+      group: 'Actions',
+      keywords: ['download', 'docx', 'word', 'save', 'export'],
+    },
+    {
+      id: 'toggle-section-collapse',
+      label: currentSectionInfo?.isCollapsed ? 'Expand Section' : 'Collapse Section',
+      icon: <ChevronsUpDown className="h-4 w-4" />,
+      action: toggleCurrentSectionCollapse,
+      group: 'Actions',
+      keywords: ['collapse', 'expand', 'fold', 'hide', 'heading'],
     },
     // Settings
     {
@@ -347,6 +482,50 @@ export function CommandPalette({
               >
                 <Type className="h-4 w-4" />
                 <span className="ml-2 flex-1">{font.label}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    )
+  }
+
+  // Variables page content
+  if (page === 'variables') {
+    return (
+      <CommandDialog open={open} onOpenChange={onOpenChange}>
+        <CommandInput
+          placeholder="Select a variable to insert..."
+          value={search}
+          onValueChange={setSearch}
+        />
+        <CommandList>
+          <CommandGroup>
+            <CommandItem
+              value="back"
+              onSelect={() => {
+                setPage(null)
+                setSearch('')
+              }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="ml-2">Back</span>
+            </CommandItem>
+          </CommandGroup>
+          <CommandEmpty>No variables found.</CommandEmpty>
+          <CommandGroup heading="Variables">
+            {variables.map((variable) => (
+              <CommandItem
+                key={variable.id}
+                value={`${variable.name} ${variable.value}`}
+                onSelect={() => {
+                  editor?.chain().focus().insertVariable(variable.id).run()
+                  onOpenChange(false)
+                }}
+              >
+                <Variable className="h-4 w-4" />
+                <span className="ml-2 flex-1">{variable.name}</span>
+                <span className="text-muted-foreground text-sm">{variable.value}</span>
               </CommandItem>
             ))}
           </CommandGroup>

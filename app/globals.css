@@ -217,6 +217,49 @@
   @apply bg-muted/50;
 }
 
+/* Collapsible headings */
+.heading-collapse-wrapper {
+  display: inline;
+  user-select: none;
+}
+
+.heading-collapse-toggle {
+  @apply inline-flex items-center justify-center ml-2 p-0.5 rounded opacity-0 transition-opacity;
+  @apply text-muted-foreground hover:text-foreground hover:bg-muted;
+  vertical-align: middle;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.tiptap-editor h1:hover .heading-collapse-toggle,
+.tiptap-editor h2:hover .heading-collapse-toggle,
+.tiptap-editor h3:hover .heading-collapse-toggle,
+.tiptap-editor h4:hover .heading-collapse-toggle,
+.heading-collapse-toggle:focus,
+.heading-collapse-toggle.collapsed {
+  @apply opacity-100;
+}
+
+.tiptap-editor .collapsed-content {
+  display: none;
+  animation: none;
+}
+
+/* Variable nodes */
+.tiptap-editor .variable-node {
+  --variable-color: oklch(62.7% 0.194 149.214);
+  background-color: oklch(from var(--variable-color) l c h / 0.15);
+  @apply px-1.5 py-0.5 rounded-md;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.tiptap-editor .variable-node.variable-deleted {
+  @apply bg-destructive/15 text-destructive;
+}
+
 /* Font family classes */
 .font-system {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
