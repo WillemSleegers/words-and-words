@@ -1,4 +1,4 @@
-export type { Document, DocumentMetadata, DocumentStorage } from './types'
+export type { Document, DocumentMetadata, DocumentStorage, FontFamily } from './types'
 export { localStorageAdapter } from './local-storage'
 
 // Default storage adapter - swap this out later for database

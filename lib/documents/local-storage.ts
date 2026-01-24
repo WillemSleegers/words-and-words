@@ -14,9 +14,10 @@ function getStoredDocuments(): Document[] {
 
   try {
     const docs = JSON.parse(stored) as Document[]
-    // Convert date strings back to Date objects
+    // Convert date strings back to Date objects and add default font for existing docs
     return docs.map(doc => ({
       ...doc,
+      font: doc.font ?? 'system',
       createdAt: new Date(doc.createdAt),
       updatedAt: new Date(doc.updatedAt),
     }))
@@ -51,6 +52,7 @@ export const localStorageAdapter: DocumentStorage = {
       id: generateId(),
       title,
       content,
+      font: 'system',
       createdAt: now,
       updatedAt: now,
     }
@@ -61,7 +63,7 @@ export const localStorageAdapter: DocumentStorage = {
     return newDoc
   },
 
-  async update(id: string, data: Partial<Pick<Document, 'title' | 'content'>>): Promise<Document> {
+  async update(id: string, data: Partial<Pick<Document, 'title' | 'content' | 'font'>>): Promise<Document> {
     const docs = getStoredDocuments()
     const index = docs.findIndex(doc => doc.id === id)
 

@@ -27,6 +27,13 @@ interface ShortcutGroup {
 // Base shortcuts using generic "Mod" for the platform modifier
 const baseShortcutGroups: ShortcutGroup[] = [
   {
+    title: 'Quick Actions',
+    shortcuts: [
+      { keys: ['Mod', 'Shift', 'P'], description: 'Command palette' },
+      { keys: ['Mod', 'S'], description: 'Save document' },
+    ],
+  },
+  {
     title: 'Text Formatting',
     shortcuts: [
       { keys: ['Mod', 'B'], description: 'Bold', markdown: '**text**' },
@@ -59,7 +66,6 @@ const baseShortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Mod', 'Z'], description: 'Undo' },
       { keys: ['Mod', 'Shift', 'Z'], description: 'Redo' },
-      { keys: ['Mod', 'S'], description: 'Save' },
       { keys: ['Mod', 'K'], description: 'Insert link' },
       { keys: ['Mod', 'A'], description: 'Select all' },
     ],
@@ -69,7 +75,6 @@ const baseShortcutGroups: ShortcutGroup[] = [
     shortcuts: [
       { keys: ['Mod', 'Home'], description: 'Go to start' },
       { keys: ['Mod', 'End'], description: 'Go to end' },
-      { keys: ['?'], description: 'Show this help' },
     ],
   },
 ]

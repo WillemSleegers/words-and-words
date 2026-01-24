@@ -19,10 +19,11 @@ app/
   globals.css             # Global styles including Tiptap editor styles
 components/
   editor/
+    CommandPalette.tsx          # Command palette (Cmd+Shift+P) with all actions
+    EditorBubbleMenu.tsx        # Floating menu on text selection (formatting + links)
     EditorContent.tsx           # Tiptap editor wrapper
-    EditorToolbar.tsx           # Floating toolbar (top right)
+    EditorToolbar.tsx           # Floating toolbar (top right, command palette button)
     KeyboardShortcutsDialog.tsx # Keyboard shortcuts help dialog
-    SettingsDialog.tsx          # Settings dialog (theme, counter visibility)
   ui/                           # shadcn/ui components
 hooks/
   use-document-editor.ts  # Tiptap editor hook with extensions
@@ -40,10 +41,9 @@ lib/
 The editor uses a minimal floating UI approach:
 
 - **Back button**: Fixed top-left
-- **Toolbar**: Fixed top-right (insert image, insert table, keyboard shortcuts, settings)
+- **Toolbar**: Fixed top-right (command palette button only)
+- **Bubble menu**: Appears on text selection with formatting buttons and link editing
 - **Counter**: Fixed bottom-center, click to toggle between words/characters
-
-All UI fades into the background - the focus is on the content.
 
 ### Settings
 
@@ -63,10 +63,23 @@ Settings are stored in localStorage and include:
 
 We use the React Compiler (`reactCompiler: true` in next.config.ts) instead of manual memoization. No need for `useCallback` or `useMemo` for performance - the compiler handles it.
 
+### Tiptap v3
+
+We use Tiptap v3 which has some differences from v2:
+
+- **BubbleMenu import**: `import { BubbleMenu } from '@tiptap/react/menus'` (not `@tiptap/react`)
+- **Reactive state**: Use `useEditorState` hook for reactive `editor.isActive()` checks. Without it, active states don't update in React.
+- **StarterKit includes Link**: Must disable with `link: false` in StarterKit config if configuring Link separately
+- **Link extension**: `openOnClick: false` + `enableClickSelection: true` for click-to-select behavior
+
 ## Notes
 
 - Documents are stored in browser localStorage via `lib/documents.ts`
 - Auto-save triggers after 1 second of inactivity
 - Cmd/Ctrl+S manually saves
-- Press `?` to open keyboard shortcuts dialog
+- Cmd/Ctrl+Shift+P opens the command palette
 - Will be replaced by database logic at a later time
+
+## Coding Guidelines
+
+- **No delay/timeout hacks**: Don't use `setTimeout`, `delayDuration`, or similar timing-based workarounds to fix UI issues. Find the root cause and fix it properly.

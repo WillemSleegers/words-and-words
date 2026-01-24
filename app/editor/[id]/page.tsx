@@ -8,7 +8,7 @@ import { EditorContent } from '@/components/editor/EditorContent'
 import { EditorToolbar } from '@/components/editor/EditorToolbar'
 import { useDocumentEditor } from '@/hooks/use-document-editor'
 import { KeyboardShortcutsDialog } from '@/components/editor/KeyboardShortcutsDialog'
-import { SettingsDialog } from '@/components/editor/SettingsDialog'
+import { CommandPalette } from '@/components/editor/CommandPalette'
 import { useSettings } from '@/hooks/use-settings'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -25,7 +25,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [content, setContent] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
   const { settings, updateSettings } = useSettings()
 
   const editor = useDocumentEditor({
@@ -87,14 +87,10 @@ export default function EditorPage({ params }: EditorPageProps) {
         e.preventDefault()
         saveDocument()
       }
-      // Show keyboard shortcuts help with ?
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Only trigger if not typing in an input
-        const target = e.target as HTMLElement
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-          e.preventDefault()
-          setShowShortcuts(true)
-        }
+      // Command palette with Cmd+Shift+P
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'p') {
+        e.preventDefault()
+        setShowCommandPalette(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -137,11 +133,7 @@ export default function EditorPage({ params }: EditorPageProps) {
 
       {/* Floating toolbar - top right */}
       <div className="fixed top-4 right-4 z-10">
-        <EditorToolbar
-          editor={editor}
-          onShowShortcuts={() => setShowShortcuts(true)}
-          onShowSettings={() => setShowSettings(true)}
-        />
+        <EditorToolbar onShowCommandPalette={() => setShowCommandPalette(true)} />
       </div>
 
       {/* Main content area - centered */}
@@ -170,11 +162,13 @@ export default function EditorPage({ params }: EditorPageProps) {
         onOpenChange={setShowShortcuts}
       />
 
-      <SettingsDialog
-        open={showSettings}
-        onOpenChange={setShowSettings}
+      <CommandPalette
+        open={showCommandPalette}
+        onOpenChange={setShowCommandPalette}
+        editor={editor}
         settings={settings}
         onSettingsChange={updateSettings}
+        onShowShortcuts={() => setShowShortcuts(true)}
       />
     </div>
   )
