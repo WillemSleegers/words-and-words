@@ -17,6 +17,7 @@ export function EditorToolbar({ onShowCommandPalette }: EditorToolbarProps) {
           size="icon"
           onClick={onShowCommandPalette}
           className="h-8 w-8"
+          aria-label="Open command palette"
         >
           <Command className="h-4 w-4" />
         </Button>

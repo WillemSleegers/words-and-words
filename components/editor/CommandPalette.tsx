@@ -68,6 +68,7 @@ interface CommandPaletteProps {
   onSettingsChange: (updates: Partial<SettingsType>) => void
   onShowShortcuts: () => void
   onShowVariables: () => void
+  onShowFind: () => void
   onShowFindReplace: () => void
   documentTitle: string
   documentFont: FontFamily
@@ -93,6 +94,7 @@ export function CommandPalette({
   onSettingsChange,
   onShowShortcuts,
   onShowVariables,
+  onShowFind,
   onShowFindReplace,
   documentTitle,
   documentFont,
@@ -377,6 +379,14 @@ export function CommandPalette({
       keywords: ['placeholder', 'template', 'dynamic', 'edit'],
     },
     // Actions
+    {
+      id: 'find',
+      label: 'Find',
+      icon: <Search className="h-4 w-4" />,
+      action: () => onShowFind(),
+      group: 'Actions',
+      keywords: ['search', 'find'],
+    },
     {
       id: 'find-replace',
       label: 'Find & Replace',

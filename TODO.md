@@ -12,6 +12,38 @@
 - [ ] Can we wrap content of a header in a div element or something equivalent so we can handle collapsing content better (ie animate it better)?
 - [x] Move the collapse chevron to collapse sections to the left of the header instead of the right.
 
+## Feature Ideas
+
+### Text Formatting
+
+- [ ] Text highlight/background color
+- [ ] Font size control
+- [ ] Superscript/subscript formatting
+- [ ] Strikethrough (if not already available)
+- [ ] Indent/outdent controls
+
+### Document Management
+
+- [ ] Document search/filter on documents page
+- [ ] Document templates (start from pre-made templates)
+- [ ] Duplicate document ("Save as Copy")
+- [ ] Additional export formats (PDF, Markdown, HTML, plain text)
+- [ ] Import documents from file
+
+### Editor Features
+
+- [ ] Paste as plain text (Cmd+Shift+V)
+- [ ] Horizontal rule insertion via command palette
+- [ ] Reading time estimate in stats
+- [ ] Focus/zen mode (hide all UI except editor)
+- [ ] Spell checking integration
+
+### Table Improvements
+
+- [ ] Insert/delete rows/columns from keyboard or command palette
+- [ ] Merge cells support
+- [ ] Better column width adjustment UI
+
 ## Code Improvements
 
 ### High Priority
@@ -19,7 +51,11 @@
 - [ ] Fix auto-save `useEffect` circular dependency
   - `saveDocument` is in the dependency array but captures `document` and `content`
   - Creates circular dependency flow that could cause issues
-  - Location: `app/editor/[id]/page.tsx:80`
+  - Location: `app/editor/[id]/page.tsx`
+
+- [ ] Create typed storage helper for extensions
+  - Eliminate repeated `as unknown as { extensionName: Storage }` casts
+  - Create a utility function like `getExtensionStorage<T>(editor, 'extensionName')`
 
 ### Medium Priority
 
@@ -27,10 +63,13 @@
   - Wrap CommandPalette, EditorContent with React error boundaries
   - Gracefully handle runtime errors instead of crashing the whole app
 
-- [ ] Optimize event listeners in KeyboardShortcutsDialog
-  - `handleKeyDown` and `handleKeyUp` are recreated each render
-  - Causes listener re-registration on every render while dialog is open
-  - Location: `components/editor/KeyboardShortcutsDialog.tsx:215-223`
+- [ ] Optimize collapsible headings decoration performance
+  - Currently walks entire document twice per decoration pass
+  - Could combine into single pass
+
+- [ ] Debounce Find & Replace regex matching
+  - Currently recalculates on every keystroke
+  - Could debounce for better performance with large documents
 
 ### Low Priority
 
@@ -46,7 +85,26 @@
   - Document `useDocumentEditor` and `useSettings` for better IDE support
   - Location: `hooks/use-document-editor.ts`, `hooks/use-settings.ts`
 
-## Completed
+- [ ] Extract heading key generation to utility
+  - `getHeadingKey` logic exists in multiple places
+  - Should be a single source of truth
+
+## Accessibility
+
+- [ ] Add labels to Find & Replace inputs (not just placeholders)
+- [ ] Add skip-to-content link for keyboard navigation
+- [ ] Ensure sufficient color contrast for search highlights
+- [ ] Add aria-labels to TOC buttons
+
+## Recently Completed
+
+- [x] Find & Replace feature with floating bar UI
+- [x] Auto-save visual indicator ("Saving...", "Saved")
+- [x] Metadata title fix (was "Create Next App")
+- [x] Accessibility: aria-labels on icon buttons
+- [x] Prefers-reduced-motion support in CSS and JavaScript
+
+## Previously Completed
 
 - [x] Add a button to the top right that launches the command palette.
 - [x] Create a toolbar with all the typical text editor options. Make it a dialog window that shows in the center of the screen. This could be used to select options on a phone.

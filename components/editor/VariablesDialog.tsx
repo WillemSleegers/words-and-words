@@ -129,6 +129,7 @@ export function VariablesDialog({
               size="icon"
               onClick={handleAddVariable}
               disabled={!newName.trim()}
+              aria-label="Add variable"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -204,6 +205,7 @@ export function VariablesDialog({
                         variant="ghost"
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         onClick={() => handleDeleteVariable(variable.id)}
+                        aria-label={`Delete ${variable.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

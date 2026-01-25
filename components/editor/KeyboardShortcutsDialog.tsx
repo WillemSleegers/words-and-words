@@ -32,7 +32,6 @@ const baseShortcutGroups: ShortcutGroup[] = [
       { keys: ['Mod', 'Shift', 'P'], description: 'Command palette' },
       { keys: ['Mod', 'S'], description: 'Save document' },
       { keys: ['Mod', 'F'], description: 'Find' },
-      { keys: ['Mod', 'H'], description: 'Find & Replace' },
     ],
   },
   {

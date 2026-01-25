@@ -29,6 +29,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [content, setContent] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showVariables, setShowVariables] = useState(false)
@@ -68,13 +69,23 @@ export default function EditorPage({ params }: EditorPageProps) {
   async function saveDocument() {
     if (!document || !hasUnsavedChanges) return
 
+    setSaveStatus('saving')
     try {
       await documentStorage.update(document.id, { content })
       setHasUnsavedChanges(false)
+      setSaveStatus('saved')
     } catch {
-      // Silent fail for auto-save
+      setSaveStatus('idle')
     }
   }
+
+  // Reset save status after showing "Saved" briefly
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      const timeout = setTimeout(() => setSaveStatus('idle'), 2000)
+      return () => clearTimeout(timeout)
+    }
+  }, [saveStatus])
 
   // Auto-save after 1 second of inactivity
   useEffect(() => {
@@ -104,12 +115,7 @@ export default function EditorPage({ params }: EditorPageProps) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault()
         setShowFindReplace(true)
-      }
-      // Find & Replace with Cmd+H
-      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
-        e.preventDefault()
-        setShowFindReplace(true)
-        setShowReplace(true)
+        setShowReplace(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -161,21 +167,30 @@ export default function EditorPage({ params }: EditorPageProps) {
     <div className="h-screen bg-background flex flex-col">
       {/* Top navigation bar */}
       <header className="shrink-0 h-10 flex items-center justify-between px-4 mt-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push('/documents')}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Back to documents</p>
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push('/documents')}
+                className="h-8 w-8"
+                aria-label="Back to documents"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Back to documents</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Save status indicator */}
+          <span className="text-xs text-muted-foreground transition-opacity duration-200">
+            {saveStatus === 'saving' && 'Saving...'}
+            {saveStatus === 'saved' && 'Saved'}
+          </span>
+        </div>
 
         <EditorToolbar onShowCommandPalette={() => setShowCommandPalette(true)} />
       </header>
@@ -232,7 +247,14 @@ export default function EditorPage({ params }: EditorPageProps) {
         onSettingsChange={updateSettings}
         onShowShortcuts={() => setShowShortcuts(true)}
         onShowVariables={() => setShowVariables(true)}
-        onShowFindReplace={() => setShowFindReplace(true)}
+        onShowFind={() => {
+          setShowFindReplace(true)
+          setShowReplace(false)
+        }}
+        onShowFindReplace={() => {
+          setShowFindReplace(true)
+          setShowReplace(true)
+        }}
         variables={document?.variables || []}
         documentTitle={document?.title || 'Untitled'}
         documentFont={document?.font || 'system'}

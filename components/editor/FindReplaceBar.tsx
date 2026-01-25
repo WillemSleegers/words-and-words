@@ -112,7 +112,7 @@ export function FindReplaceBar({
   if (!open) return null
 
   return (
-    <div className="absolute top-0 right-0 z-20 bg-background border rounded-lg shadow-lg p-2 flex flex-col gap-2 min-w-80">
+    <div className="absolute top-0 right-4 z-20 bg-background border rounded-lg shadow-lg p-2 flex flex-col gap-2 min-w-80">
       {/* Search row */}
       <div className="flex items-center gap-1">
         <Input
@@ -188,7 +188,7 @@ export function FindReplaceBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {showReplace ? 'Hide replace' : 'Replace (Cmd+H)'}
+            {showReplace ? 'Hide replace' : 'Show replace'}
           </TooltipContent>
         </Tooltip>
 

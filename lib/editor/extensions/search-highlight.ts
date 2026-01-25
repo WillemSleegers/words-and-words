@@ -18,6 +18,12 @@ export interface SearchHighlightStorage {
 
 const searchHighlightPluginKey = new PluginKey('searchHighlight')
 
+// Helper to check if user prefers reduced motion
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function findMatches(
   doc: ProseMirrorNode,
   searchTerm: string,
@@ -115,12 +121,12 @@ export const SearchHighlight = Extension.create<object, SearchHighlightStorage>(
 
             // Scroll if match is outside visible area
             if (coords.top < editorRect.top || coords.bottom > editorRect.bottom) {
-              storage.editorView.dom.scrollIntoView({ block: 'center' })
+              const scrollBehavior = prefersReducedMotion() ? 'auto' : 'smooth'
               const element = storage.editorView.domAtPos(match.from)
               if (element.node instanceof HTMLElement) {
-                element.node.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                element.node.scrollIntoView({ block: 'center', behavior: scrollBehavior })
               } else if (element.node.parentElement) {
-                element.node.parentElement.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                element.node.parentElement.scrollIntoView({ block: 'center', behavior: scrollBehavior })
               }
             }
 
@@ -152,11 +158,12 @@ export const SearchHighlight = Extension.create<object, SearchHighlightStorage>(
 
             // Scroll if match is outside visible area
             if (coords.top < editorRect.top || coords.bottom > editorRect.bottom) {
+              const scrollBehavior = prefersReducedMotion() ? 'auto' : 'smooth'
               const element = storage.editorView.domAtPos(match.from)
               if (element.node instanceof HTMLElement) {
-                element.node.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                element.node.scrollIntoView({ block: 'center', behavior: scrollBehavior })
               } else if (element.node.parentElement) {
-                element.node.parentElement.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                element.node.parentElement.scrollIntoView({ block: 'center', behavior: scrollBehavior })
               }
             }
 
@@ -171,69 +178,64 @@ export const SearchHighlight = Extension.create<object, SearchHighlightStorage>(
 
       replaceCurrentMatch:
         (replacement: string) =>
-        ({ editor }) => {
+        ({ editor, tr, dispatch }) => {
           const storage = (editor.storage as unknown as { searchHighlight: SearchHighlightStorage }).searchHighlight
-          if (!storage.editorView) return false
 
           // Recalculate matches from current doc to ensure positions are accurate
-          const currentMatches = findMatches(storage.editorView.state.doc, storage.searchTerm, storage.matchCase)
-          if (currentMatches.length === 0 || storage.currentIndex < 0 || storage.currentIndex >= currentMatches.length) {
-            return false
+          const currentMatches = findMatches(tr.doc, storage.searchTerm, storage.matchCase)
+          if (currentMatches.length === 0) return false
+
+          // If no match selected yet, start at first match
+          if (storage.currentIndex < 0 || storage.currentIndex >= currentMatches.length) {
+            storage.currentIndex = 0
           }
 
           const match = currentMatches[storage.currentIndex]
 
-          // Replace using direct transaction (no focus)
-          const tr = storage.editorView.state.tr.replaceWith(
-            match.from,
-            match.to,
-            editor.schema.text(replacement)
-          )
-          storage.editorView.dispatch(tr)
+          // Replace using the provided transaction
+          tr.replaceWith(match.from, match.to, editor.schema.text(replacement))
+          tr.setMeta('searchHighlightUpdate', true)
 
-          // Recalculate matches after replacement
-          storage.matches = findMatches(storage.editorView.state.doc, storage.searchTerm, storage.matchCase)
+          if (dispatch) {
+            dispatch(tr)
 
-          // Adjust current index - stay at same index to highlight next match
-          if (storage.currentIndex >= storage.matches.length) {
-            storage.currentIndex = storage.matches.length > 0 ? 0 : -1
+            // Recalculate matches after replacement
+            storage.matches = findMatches(editor.state.doc, storage.searchTerm, storage.matchCase)
+
+            // Adjust current index - stay at same index to highlight next match
+            if (storage.currentIndex >= storage.matches.length) {
+              storage.currentIndex = storage.matches.length > 0 ? 0 : -1
+            }
           }
-
-          // Trigger decoration update
-          storage.editorView.dispatch(
-            storage.editorView.state.tr.setMeta('searchHighlightUpdate', true)
-          )
 
           return true
         },
 
       replaceAllMatches:
         (replacement: string) =>
-        ({ editor }) => {
+        ({ editor, tr, dispatch }) => {
           const storage = (editor.storage as unknown as { searchHighlight: SearchHighlightStorage }).searchHighlight
-          if (!storage.editorView) return false
 
           // Recalculate matches from current doc
-          const currentMatches = findMatches(storage.editorView.state.doc, storage.searchTerm, storage.matchCase)
+          const currentMatches = findMatches(tr.doc, storage.searchTerm, storage.matchCase)
           if (currentMatches.length === 0) return false
 
           // Replace in reverse order to preserve positions
           const matchesToReplace = [...currentMatches].reverse()
 
-          const tr = storage.editorView.state.tr
+          // Add all replacements to the provided transaction
           for (const match of matchesToReplace) {
             tr.replaceWith(match.from, match.to, editor.schema.text(replacement))
           }
-          storage.editorView.dispatch(tr)
+          tr.setMeta('searchHighlightUpdate', true)
 
-          // Clear matches after replacing all
-          storage.matches = []
-          storage.currentIndex = -1
+          if (dispatch) {
+            dispatch(tr)
 
-          // Trigger decoration update
-          storage.editorView.dispatch(
-            storage.editorView.state.tr.setMeta('searchHighlightUpdate', true)
-          )
+            // Clear matches after replacing all
+            storage.matches = []
+            storage.currentIndex = -1
+          }
 
           return true
         },
