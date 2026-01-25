@@ -4,6 +4,7 @@ export interface Settings {
   theme: 'light' | 'dark' | 'system'
   showCounter: boolean
   counter: CounterType
+  showTableOfContents: boolean
 }
 
 const STORAGE_KEY = 'editor-settings'
@@ -12,6 +13,7 @@ const defaultSettings: Settings = {
   theme: 'system',
   showCounter: true,
   counter: 'words',
+  showTableOfContents: true,
 }
 
 export function getSettings(): Settings {

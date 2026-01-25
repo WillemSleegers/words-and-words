@@ -134,19 +134,27 @@
 }
 
 .tiptap-editor h1 {
-  @apply text-4xl font-bold mt-6 mb-4;
+  @apply text-2xl font-bold mt-6 mb-4;
 }
 
 .tiptap-editor h2 {
-  @apply text-3xl font-bold mt-5 mb-3;
+  @apply text-xl font-bold mt-5 mb-3;
 }
 
 .tiptap-editor h3 {
-  @apply text-2xl font-semibold mt-4 mb-2;
+  @apply text-lg font-semibold mt-4 mb-2;
 }
 
 .tiptap-editor h4 {
-  @apply text-xl font-semibold mt-3 mb-2;
+  @apply text-base font-semibold mt-3 mb-2;
+}
+
+.tiptap-editor .document-title {
+  @apply text-3xl font-bold mt-0 mb-2;
+}
+
+.tiptap-editor .document-subtitle {
+  @apply text-lg text-muted-foreground mt-0 mb-6;
 }
 
 .tiptap-editor p {
@@ -258,6 +266,23 @@
 
 .tiptap-editor .variable-node.variable-deleted {
   @apply bg-destructive/15 text-destructive;
+}
+
+/* Table of Contents sidebar */
+.toc-sidebar {
+  @apply bg-background/80 backdrop-blur-sm rounded-lg border p-2;
+}
+
+.toc-item {
+  @apply text-muted-foreground;
+}
+
+.toc-item:hover {
+  @apply text-foreground;
+}
+
+.toc-item-active {
+  @apply text-foreground;
 }
 
 /* Font family classes */

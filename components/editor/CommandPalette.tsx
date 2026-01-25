@@ -22,6 +22,7 @@ import {
   Heading4,
   List,
   ListOrdered,
+  ListTree,
   Quote,
   CodeSquare,
   Image,
@@ -237,12 +238,28 @@ export function CommandPalette({
     },
     // Headings
     {
+      id: 'title',
+      label: 'Title',
+      icon: <Type className="h-4 w-4" />,
+      action: () => editor?.chain().focus().toggleTitle().run(),
+      group: 'Headings',
+      keywords: ['document title', 'main heading'],
+    },
+    {
+      id: 'subtitle',
+      label: 'Subtitle',
+      icon: <Type className="h-4 w-4" />,
+      action: () => editor?.chain().focus().toggleSubtitle().run(),
+      group: 'Headings',
+      keywords: ['document subtitle', 'tagline'],
+    },
+    {
       id: 'h1',
       label: 'Heading 1',
       icon: <Heading1 className="h-4 w-4" />,
       action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
       group: 'Headings',
-      keywords: ['title', 'h1'],
+      keywords: ['h1'],
     },
     {
       id: 'h2',
@@ -250,7 +267,7 @@ export function CommandPalette({
       icon: <Heading2 className="h-4 w-4" />,
       action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
       group: 'Headings',
-      keywords: ['subtitle', 'h2'],
+      keywords: ['h2'],
     },
     {
       id: 'h3',
@@ -423,6 +440,14 @@ export function CommandPalette({
       action: () => onSettingsChange({ showCounter: !settings.showCounter }),
       group: 'Settings',
       keywords: ['counter', 'words', 'characters', 'stats'],
+    },
+    {
+      id: 'toggle-toc',
+      label: settings.showTableOfContents ? 'Hide Table of Contents' : 'Show Table of Contents',
+      icon: <ListTree className="h-4 w-4" />,
+      action: () => onSettingsChange({ showTableOfContents: !settings.showTableOfContents }),
+      group: 'Settings',
+      keywords: ['toc', 'outline', 'navigation', 'sidebar', 'headings'],
     },
     {
       id: 'font',

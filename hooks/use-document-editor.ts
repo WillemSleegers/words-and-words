@@ -18,7 +18,7 @@ export function useDocumentEditor({ content = '', onUpdate }: UseDocumentEditorO
     },
     editorProps: {
       attributes: {
-        class: 'tiptap-editor focus:outline-none p-8',
+        class: 'tiptap-editor focus:outline-none px-8 pb-8',
       },
     },
   })

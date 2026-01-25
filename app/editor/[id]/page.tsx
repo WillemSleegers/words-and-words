@@ -15,6 +15,7 @@ import type { VariableNodeStorage } from '@/lib/editor/extensions/variable-node'
 import { useSettings } from '@/hooks/use-settings'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { TableOfContents } from '@/components/editor/TableOfContents'
 
 interface EditorPageProps {
   params: Promise<{ id: string }>
@@ -143,9 +144,9 @@ export default function EditorPage({ params }: EditorPageProps) {
   }
 
   return (
-    <div className="h-screen bg-background relative">
-      {/* Floating back button - top left */}
-      <div className="fixed top-4 left-4 z-10">
+    <div className="h-screen bg-background flex flex-col">
+      {/* Top navigation bar */}
+      <header className="shrink-0 h-10 flex items-center justify-between px-4">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -161,17 +162,25 @@ export default function EditorPage({ params }: EditorPageProps) {
             <p>Back to documents</p>
           </TooltipContent>
         </Tooltip>
-      </div>
 
-      {/* Floating toolbar - top right */}
-      <div className="fixed top-4 right-4 z-10">
         <EditorToolbar onShowCommandPalette={() => setShowCommandPalette(true)} />
-      </div>
+      </header>
 
-      {/* Main content area - centered */}
-      <div className="h-full overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4">
-          <EditorContent editor={editor} />
+      {/* Main content area with TOC */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto px-4 flex justify-center">
+          {/* Table of Contents - positioned to the left of content */}
+          {settings.showTableOfContents && (
+            <div className="hidden lg:block w-56 shrink-0 mr-4">
+              <TableOfContents
+                editor={editor}
+                className="sticky top-0 max-h-[calc(100vh-3rem)] overflow-y-auto"
+              />
+            </div>
+          )}
+          <div className="w-full max-w-3xl">
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
 

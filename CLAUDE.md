@@ -22,13 +22,15 @@ components/
     CommandPalette.tsx          # Command palette (Cmd+Shift+P) with all actions
     EditorBubbleMenu.tsx        # Floating menu on text selection (formatting + links)
     EditorContent.tsx           # Tiptap editor wrapper
-    EditorToolbar.tsx           # Floating toolbar (top right, command palette button)
+    EditorToolbar.tsx           # Top-right toolbar (command palette button)
     KeyboardShortcutsDialog.tsx # Keyboard shortcuts help dialog
+    TableOfContents.tsx         # Sidebar navigation for headings
     VariablesDialog.tsx         # Dialog for managing document variables
   ui/                           # shadcn/ui components
 hooks/
-  use-document-editor.ts  # Tiptap editor hook with extensions
-  use-settings.ts         # Settings hook (theme, counter preferences)
+  use-document-editor.ts    # Tiptap editor hook with extensions
+  use-settings.ts           # Settings hook (theme, counter preferences)
+  use-table-of-contents.ts  # Reactive heading extraction for TOC
 lib/
   documents.ts            # Document storage utilities
   settings.ts             # Settings storage and theme application
@@ -37,12 +39,13 @@ lib/
 
 ## Design Decisions
 
-### Floating UI Elements
+### Layout
 
-The editor uses a minimal floating UI approach:
+The editor uses a minimal UI with a top navigation bar:
 
-- **Back button**: Fixed top-left
-- **Toolbar**: Fixed top-right (command palette button only)
+- **Top nav bar**: Back button (left), toolbar with command palette button (right)
+- **Table of Contents**: Optional sidebar to the left of content, visible on lg+ screens (1024px)
+- **Editor content**: Centered, max-width 3xl
 - **Bubble menu**: Appears on text selection with formatting buttons and link editing
 - **Counter**: Fixed bottom-center, click to toggle between words/characters
 
@@ -53,6 +56,7 @@ Settings are stored in localStorage and include:
 - **Theme**: light, dark, or system
 - **Show counter**: toggle visibility of word/character count
 - **Counter type**: words or characters (toggled by clicking the counter itself)
+- **Show Table of Contents**: toggle TOC sidebar visibility
 
 ### Editor Styling
 
@@ -70,11 +74,30 @@ Variables allow inserting dynamic placeholders that update throughout the docume
 - **Deleted handling**: Shows `[Deleted Variable]` in red if a variable is removed but still referenced
 - **Word export**: Variables resolve to their values when exporting to Word
 
+### Title and Subtitle Nodes
+
+Dedicated nodes for document title and subtitle, separate from headings:
+
+- **Title node**: Large, bold text at document top (Cmd+Alt+0)
+- **Subtitle node**: Muted text below title (Cmd+Alt+9)
+- **Not collapsible**: Unlike headings, these don't have collapse functionality
+- **HTML representation**: Uses `div[data-type="title"]` and `div[data-type="subtitle"]` to avoid conflicts with heading parsing
+
+### Table of Contents
+
+Sidebar navigation for document structure:
+
+- **Heading extraction**: Uses `useEditorState` for reactive updates via `use-table-of-contents.ts`
+- **Click to navigate**: Clicking a heading jumps cursor to that position
+- **Active highlighting**: Current section highlighted based on cursor position
+- **Responsive**: Hidden on screens smaller than lg (1024px)
+- **Toggle**: Can be shown/hidden via command palette or settings
+
 ### Collapsible Headings
 
 Headings can be collapsed to hide content beneath them:
 
-- **Collapse toggle**: Chevron button appears on hover next to headings
+- **Collapse toggle**: Chevron button appears on hover next to headings (only when heading has text)
 - **Command palette**: "Collapse Section" / "Expand Section" command for current heading
 - **Visual state**: Collapsed content uses `display: none` (no animations per CLAUDE.md guidelines)
 

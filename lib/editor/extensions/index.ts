@@ -13,6 +13,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { CollapsibleHeadings } from './collapsible-headings'
 import { VariableNode } from './variable-node'
+import { Title, Subtitle } from './title-subtitle'
 
 export const extensions = [
   StarterKit.configure({
@@ -53,4 +54,6 @@ export const extensions = [
   TableCell,
   CollapsibleHeadings,
   VariableNode,
+  Title,
+  Subtitle,
 ]

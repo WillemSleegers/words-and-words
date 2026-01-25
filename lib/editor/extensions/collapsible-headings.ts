@@ -27,8 +27,8 @@ function createChevronWidget(
   button.type = 'button'
   button.className = `heading-collapse-toggle ${isCollapsed ? 'collapsed' : ''}`
   button.innerHTML = isCollapsed
-    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>'
-    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>'
+    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>'
 
   button.onmousedown = (e) => {
     e.preventDefault()
@@ -113,18 +113,20 @@ export const CollapsibleHeadings = Extension.create<object, CollapsibleHeadingsS
             headings.forEach((heading, idx) => {
               const isCollapsed = storage.collapsedHeadings.has(heading.key)
 
-              // Add chevron widget at the end of the heading
-              decorations.push(
-                Decoration.widget(
-                  heading.endPos - 1,
-                  () => createChevronWidget(heading.key, isCollapsed, storage),
-                  {
-                    side: 1,
-                    key: `chevron-${heading.key}`,
-                    stopEvent: () => true,
-                  }
+              // Add chevron widget at the end of the heading (only if heading has text)
+              if (heading.text.length > 0) {
+                decorations.push(
+                  Decoration.widget(
+                    heading.endPos - 1,
+                    () => createChevronWidget(heading.key, isCollapsed, storage),
+                    {
+                      side: 1,
+                      key: `chevron-${heading.key}`,
+                      stopEvent: () => true,
+                    }
+                  )
                 )
-              )
+              }
 
               // If collapsed, hide all nodes until the next heading of same or higher level
               if (isCollapsed) {
