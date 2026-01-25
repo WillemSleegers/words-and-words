@@ -14,6 +14,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { CollapsibleHeadings } from './collapsible-headings'
 import { VariableNode } from './variable-node'
 import { Title, Subtitle } from './title-subtitle'
+import { SearchHighlight } from './search-highlight'
 
 export const extensions = [
   StarterKit.configure({
@@ -56,4 +57,5 @@ export const extensions = [
   VariableNode,
   Title,
   Subtitle,
+  SearchHighlight,
 ]

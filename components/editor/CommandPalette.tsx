@@ -43,6 +43,7 @@ import {
   FileDown,
   ChevronsUpDown,
   Variable,
+  Search,
 } from 'lucide-react'
 import { exportToWord } from '@/lib/export-to-word'
 import type { Settings as SettingsType } from '@/lib/settings'
@@ -67,6 +68,7 @@ interface CommandPaletteProps {
   onSettingsChange: (updates: Partial<SettingsType>) => void
   onShowShortcuts: () => void
   onShowVariables: () => void
+  onShowFindReplace: () => void
   documentTitle: string
   documentFont: FontFamily
   variables: VariableType[]
@@ -91,6 +93,7 @@ export function CommandPalette({
   onSettingsChange,
   onShowShortcuts,
   onShowVariables,
+  onShowFindReplace,
   documentTitle,
   documentFont,
   variables,
@@ -374,6 +377,14 @@ export function CommandPalette({
       keywords: ['placeholder', 'template', 'dynamic', 'edit'],
     },
     // Actions
+    {
+      id: 'find-replace',
+      label: 'Find & Replace',
+      icon: <Search className="h-4 w-4" />,
+      action: () => onShowFindReplace(),
+      group: 'Actions',
+      keywords: ['search', 'find', 'replace', 'substitute'],
+    },
     {
       id: 'undo',
       label: 'Undo',

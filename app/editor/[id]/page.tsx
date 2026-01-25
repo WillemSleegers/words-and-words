@@ -10,6 +10,7 @@ import { useDocumentEditor } from '@/hooks/use-document-editor'
 import { KeyboardShortcutsDialog } from '@/components/editor/KeyboardShortcutsDialog'
 import { CommandPalette } from '@/components/editor/CommandPalette'
 import { VariablesDialog } from '@/components/editor/VariablesDialog'
+import { FindReplaceBar } from '@/components/editor/FindReplaceBar'
 import type { Variable } from '@/lib/documents/types'
 import type { VariableNodeStorage } from '@/lib/editor/extensions/variable-node'
 import { useSettings } from '@/hooks/use-settings'
@@ -31,6 +32,8 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showVariables, setShowVariables] = useState(false)
+  const [showFindReplace, setShowFindReplace] = useState(false)
+  const [showReplace, setShowReplace] = useState(false)
   const { settings, updateSettings } = useSettings()
 
   const editor = useDocumentEditor({
@@ -96,6 +99,17 @@ export default function EditorPage({ params }: EditorPageProps) {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'p') {
         e.preventDefault()
         setShowCommandPalette(true)
+      }
+      // Find with Cmd+F
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        setShowFindReplace(true)
+      }
+      // Find & Replace with Cmd+H
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+        e.preventDefault()
+        setShowFindReplace(true)
+        setShowReplace(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -168,7 +182,14 @@ export default function EditorPage({ params }: EditorPageProps) {
 
       {/* Main content area with TOC */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto px-4 flex justify-center">
+        <div className="mx-auto px-4 flex justify-center relative">
+          <FindReplaceBar
+            editor={editor}
+            open={showFindReplace}
+            onClose={() => setShowFindReplace(false)}
+            showReplace={showReplace}
+            onShowReplaceChange={setShowReplace}
+          />
           {/* Table of Contents - positioned to the left of content */}
           {settings.showTableOfContents && (
             <div className="hidden lg:block w-56 shrink-0 mr-4">
@@ -211,6 +232,7 @@ export default function EditorPage({ params }: EditorPageProps) {
         onSettingsChange={updateSettings}
         onShowShortcuts={() => setShowShortcuts(true)}
         onShowVariables={() => setShowVariables(true)}
+        onShowFindReplace={() => setShowFindReplace(true)}
         variables={document?.variables || []}
         documentTitle={document?.title || 'Untitled'}
         documentFont={document?.font || 'system'}

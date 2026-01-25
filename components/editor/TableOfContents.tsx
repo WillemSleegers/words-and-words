@@ -11,7 +11,9 @@ interface TableOfContentsProps {
 }
 
 export function TableOfContents({ editor, className }: TableOfContentsProps) {
-  const { headings, activePos } = useTableOfContents(editor)
+  const tocState = useTableOfContents(editor)
+  const headings = tocState?.headings ?? []
+  const activePos = tocState?.activePos ?? null
 
   function jumpToHeading(heading: TocHeading) {
     if (!editor) return
