@@ -1,7 +1,8 @@
 'use client'
 
 import type { Editor } from '@tiptap/react'
-import { useTableOfContents } from '@/hooks/use-table-of-contents'
+import { useTableOfContents, type TocHeading } from '@/hooks/use-table-of-contents'
+import { getHeadingKey, type CollapsibleHeadingsStorage } from '@/lib/editor/extensions/collapsible-headings'
 import { cn } from '@/lib/utils'
 
 interface TableOfContentsProps {
@@ -12,10 +13,53 @@ interface TableOfContentsProps {
 export function TableOfContents({ editor, className }: TableOfContentsProps) {
   const { headings, activePos } = useTableOfContents(editor)
 
-  function jumpToHeading(pos: number) {
-    if (editor) {
-      editor.chain().focus().setTextSelection(pos + 1).run()
+  function jumpToHeading(heading: TocHeading) {
+    if (!editor) return
+
+    const storage = editor.storage as { collapsibleHeadings?: CollapsibleHeadingsStorage }
+    if (storage.collapsibleHeadings && !heading.isTitle) {
+      let needsUpdate = false
+
+      // Get only the non-title headings for calculating collapsed sections
+      const nonTitleHeadings = headings.filter((h) => !h.isTitle && h.headingIndex !== undefined)
+      const targetIndex = nonTitleHeadings.findIndex((h) => h.pos === heading.pos)
+
+      // Check all preceding headings to see if any are collapsed and hiding this heading
+      for (let i = 0; i < targetIndex; i++) {
+        const precedingHeading = nonTitleHeadings[i]
+        if (precedingHeading.headingIndex === undefined) continue
+
+        const key = getHeadingKey(precedingHeading.level, precedingHeading.text, precedingHeading.headingIndex)
+        if (!storage.collapsibleHeadings.collapsedHeadings.has(key)) continue
+
+        // Find where this collapsed section ends (next heading of same or lower level)
+        const endIndex = nonTitleHeadings.findIndex(
+          (h, idx) => idx > i && h.level <= precedingHeading.level
+        )
+        const sectionEndsAt = endIndex === -1 ? nonTitleHeadings.length : endIndex
+
+        // If target is within this collapsed section, expand it
+        if (targetIndex < sectionEndsAt) {
+          storage.collapsibleHeadings.collapsedHeadings.delete(key)
+          needsUpdate = true
+        }
+      }
+
+      // Also expand the target heading itself if it's collapsed
+      if (heading.headingIndex !== undefined) {
+        const targetKey = getHeadingKey(heading.level, heading.text, heading.headingIndex)
+        if (storage.collapsibleHeadings.collapsedHeadings.has(targetKey)) {
+          storage.collapsibleHeadings.collapsedHeadings.delete(targetKey)
+          needsUpdate = true
+        }
+      }
+
+      if (needsUpdate) {
+        editor.view.dispatch(editor.state.tr.setMeta('collapsibleHeadingsUpdate', true))
+      }
     }
+
+    editor.chain().focus().setTextSelection(heading.pos + 1).run()
   }
 
   if (headings.length === 0) {
@@ -39,7 +83,7 @@ export function TableOfContents({ editor, className }: TableOfContentsProps) {
             <li key={`${heading.pos}-${index}`}>
               <button
                 type="button"
-                onClick={() => jumpToHeading(heading.pos)}
+                onClick={() => jumpToHeading(heading)}
                 className={cn(
                   'toc-item w-full text-left px-3 py-1.5 text-sm rounded-md truncate',
                   'hover:bg-muted transition-colors',

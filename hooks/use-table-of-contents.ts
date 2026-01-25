@@ -8,6 +8,7 @@ export interface TocHeading {
   text: string
   pos: number
   isTitle?: boolean
+  headingIndex?: number
 }
 
 export function useTableOfContents(editor: Editor | null) {
@@ -21,6 +22,7 @@ export function useTableOfContents(editor: Editor | null) {
       const { doc, selection } = e.state
       const cursorPos = selection.from
       const headings: TocHeading[] = []
+      let headingIndex = 0
 
       doc.descendants((node, pos) => {
         if (node.type.name === 'title') {
@@ -35,7 +37,9 @@ export function useTableOfContents(editor: Editor | null) {
             level: node.attrs.level as number,
             text: node.textContent || '',
             pos,
+            headingIndex,
           })
+          headingIndex++
         }
       })
 

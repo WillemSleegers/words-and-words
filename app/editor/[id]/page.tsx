@@ -146,7 +146,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   return (
     <div className="h-screen bg-background flex flex-col">
       {/* Top navigation bar */}
-      <header className="shrink-0 h-10 flex items-center justify-between px-4">
+      <header className="shrink-0 h-10 flex items-center justify-between px-4 mt-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

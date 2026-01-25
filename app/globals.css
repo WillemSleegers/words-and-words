@@ -133,6 +133,13 @@
   @apply outline-none;
 }
 
+.tiptap-editor h1,
+.tiptap-editor h2,
+.tiptap-editor h3,
+.tiptap-editor h4 {
+  @apply relative;
+}
+
 .tiptap-editor h1 {
   @apply text-2xl font-bold mt-6 mb-4;
 }
@@ -227,14 +234,18 @@
 
 /* Collapsible headings */
 .heading-collapse-wrapper {
-  display: inline;
+  position: absolute;
+  left: -28px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
   user-select: none;
 }
 
 .heading-collapse-toggle {
-  @apply inline-flex items-center justify-center ml-2 p-0.5 rounded opacity-0 transition-opacity;
+  @apply flex items-center justify-center p-0.5 rounded opacity-0 transition-opacity;
   @apply text-muted-foreground hover:text-foreground hover:bg-muted;
-  vertical-align: middle;
   cursor: pointer;
   border: none;
   background: transparent;

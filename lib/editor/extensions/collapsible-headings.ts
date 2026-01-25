@@ -8,7 +8,7 @@ export interface CollapsibleHeadingsStorage {
 }
 
 // Generate a unique key for a heading based on its level and text
-function getHeadingKey(level: number, text: string, index: number): string {
+export function getHeadingKey(level: number, text: string, index: number): string {
   return `${level}-${index}-${text.slice(0, 50)}`
 }
 
@@ -113,14 +113,14 @@ export const CollapsibleHeadings = Extension.create<object, CollapsibleHeadingsS
             headings.forEach((heading, idx) => {
               const isCollapsed = storage.collapsedHeadings.has(heading.key)
 
-              // Add chevron widget at the end of the heading (only if heading has text)
+              // Add chevron widget at the start of the heading (only if heading has text)
               if (heading.text.length > 0) {
                 decorations.push(
                   Decoration.widget(
-                    heading.endPos - 1,
+                    heading.pos + 1,
                     () => createChevronWidget(heading.key, isCollapsed, storage),
                     {
-                      side: 1,
+                      side: -1,
                       key: `chevron-${heading.key}`,
                       stopEvent: () => true,
                     }
