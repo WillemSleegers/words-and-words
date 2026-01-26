@@ -1,6 +1,9 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, EditorView } from '@tiptap/pm/view'
+import { createRoot, Root } from 'react-dom/client'
+import { createElement } from 'react'
+import { CollapseToggleButton } from '@/components/editor/CollapseToggleButton'
 
 export interface CollapsibleHeadingsStorage {
   collapsedHeadings: Set<string>
@@ -14,33 +17,38 @@ export function getHeadingKey(level: number, text: string, index: number): strin
 
 const collapsibleHeadingsPluginKey = new PluginKey('collapsibleHeadings')
 
+// Store roots and update functions by heading key
+const widgetData = new Map<string, {
+  element: HTMLElement
+  root: Root
+  update: (isCollapsed: boolean) => void
+}>()
+
 function createChevronWidget(
   key: string,
-  isCollapsed: boolean,
+  initialIsCollapsed: boolean,
   storage: CollapsibleHeadingsStorage
 ): HTMLElement {
+  // If we already have a widget for this heading, return it
+  // (ProseMirror caches by key, so this shouldn't happen, but just in case)
+  const existing = widgetData.get(key)
+  if (existing) {
+    return existing.element
+  }
+
   const wrapper = document.createElement('span')
   wrapper.className = 'heading-collapse-wrapper'
   wrapper.setAttribute('contenteditable', 'false')
 
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.className = `heading-collapse-toggle ${isCollapsed ? 'collapsed' : ''}`
-  button.innerHTML = isCollapsed
-    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>'
-    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+  let currentIsCollapsed = initialIsCollapsed
 
-  button.onmousedown = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-
+  const handleToggle = () => {
     if (storage.collapsedHeadings.has(key)) {
       storage.collapsedHeadings.delete(key)
     } else {
       storage.collapsedHeadings.add(key)
     }
 
-    // Force a re-render by dispatching a transaction
     if (storage.editorView) {
       storage.editorView.dispatch(
         storage.editorView.state.tr.setMeta('collapsibleHeadingsUpdate', true)
@@ -48,8 +56,35 @@ function createChevronWidget(
     }
   }
 
-  wrapper.appendChild(button)
+  const render = (isCollapsed: boolean) => {
+    currentIsCollapsed = isCollapsed
+    root.render(
+      createElement(CollapseToggleButton, {
+        key: `${key}-${isCollapsed}`,
+        isCollapsed,
+        onToggle: handleToggle,
+      })
+    )
+  }
+
+  const root = createRoot(wrapper)
+
+  widgetData.set(key, {
+    element: wrapper,
+    root,
+    update: render,
+  })
+
+  render(initialIsCollapsed)
+
   return wrapper
+}
+
+function updateAllWidgets(storage: CollapsibleHeadingsStorage) {
+  widgetData.forEach((data, key) => {
+    const isCollapsed = storage.collapsedHeadings.has(key)
+    data.update(isCollapsed)
+  })
 }
 
 export const CollapsibleHeadings = Extension.create<object, CollapsibleHeadingsStorage>({
@@ -72,6 +107,10 @@ export const CollapsibleHeadings = Extension.create<object, CollapsibleHeadingsS
         view: (view) => {
           storage.editorView = view
           return {
+            update: () => {
+              // Update all widgets with current collapsed state
+              updateAllWidgets(storage)
+            },
             destroy: () => {
               storage.editorView = null
             },

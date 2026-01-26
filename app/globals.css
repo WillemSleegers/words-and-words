@@ -6,6 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -50,6 +51,7 @@
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  --canvas: oklch(0.96 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -84,6 +86,7 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
+  --canvas: oklch(0.1 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -244,12 +247,23 @@
 }
 
 .heading-collapse-toggle {
-  @apply flex items-center justify-center p-0.5 rounded opacity-0 transition-opacity;
-  @apply text-muted-foreground hover:text-foreground hover:bg-muted;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--muted-foreground);
   cursor: pointer;
   border: none;
   background: transparent;
   pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.heading-collapse-toggle:hover {
+  color: var(--foreground);
+  background: var(--muted);
 }
 
 .tiptap-editor h1:hover .heading-collapse-toggle,
@@ -258,7 +272,12 @@
 .tiptap-editor h4:hover .heading-collapse-toggle,
 .heading-collapse-toggle:focus,
 .heading-collapse-toggle.collapsed {
-  @apply opacity-100;
+  opacity: 1;
+}
+
+/* Hide chevrons when collapsible sections are disabled */
+.collapsible-sections-disabled .heading-collapse-wrapper {
+  display: none;
 }
 
 .tiptap-editor .collapsed-content {

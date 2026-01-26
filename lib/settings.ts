@@ -1,10 +1,13 @@
 export type CounterType = 'words' | 'characters'
+export type EditorStyle = 'seamless' | 'page'
 
 export interface Settings {
   theme: 'light' | 'dark' | 'system'
   showCounter: boolean
   counter: CounterType
   showTableOfContents: boolean
+  editorStyle: EditorStyle
+  showCollapsibleSections: boolean
 }
 
 const STORAGE_KEY = 'editor-settings'
@@ -14,6 +17,8 @@ const defaultSettings: Settings = {
   showCounter: true,
   counter: 'words',
   showTableOfContents: true,
+  editorStyle: 'page',
+  showCollapsibleSections: true,
 }
 
 export function getSettings(): Settings {

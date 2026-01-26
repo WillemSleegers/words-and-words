@@ -1,22 +1,27 @@
-'use client'
+"use client"
 
-import { useEffect, useState, use } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
-import { documentStorage, type Document } from '@/lib/documents'
-import { EditorContent } from '@/components/editor/EditorContent'
-import { EditorToolbar } from '@/components/editor/EditorToolbar'
-import { useDocumentEditor } from '@/hooks/use-document-editor'
-import { KeyboardShortcutsDialog } from '@/components/editor/KeyboardShortcutsDialog'
-import { CommandPalette } from '@/components/editor/CommandPalette'
-import { VariablesDialog } from '@/components/editor/VariablesDialog'
-import { FindReplaceBar } from '@/components/editor/FindReplaceBar'
-import type { Variable } from '@/lib/documents/types'
-import type { VariableNodeStorage } from '@/lib/editor/extensions/variable-node'
-import { useSettings } from '@/hooks/use-settings'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { TableOfContents } from '@/components/editor/TableOfContents'
+import { useEffect, useState, use } from "react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Command } from "lucide-react"
+import { documentStorage, type Document } from "@/lib/documents"
+import { EditorContent } from "@/components/editor/EditorContent"
+import { useDocumentEditor } from "@/hooks/use-document-editor"
+import { KeyboardShortcutsDialog } from "@/components/editor/KeyboardShortcutsDialog"
+import {
+  CommandSidebar,
+  type SidebarMode,
+} from "@/components/editor/CommandSidebar"
+import { VariablesDialog } from "@/components/editor/VariablesDialog"
+import type { Variable } from "@/lib/documents/types"
+import type { VariableNodeStorage } from "@/lib/editor/extensions/variable-node"
+import { useSettings } from "@/hooks/use-settings"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { TableOfContents } from "@/components/editor/TableOfContents"
 
 interface EditorPageProps {
   params: Promise<{ id: string }>
@@ -27,14 +32,15 @@ export default function EditorPage({ params }: EditorPageProps) {
   const router = useRouter()
   const [document, setDocument] = useState<Document | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState("")
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  )
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showVariables, setShowVariables] = useState(false)
-  const [showFindReplace, setShowFindReplace] = useState(false)
-  const [showReplace, setShowReplace] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("commands")
   const { settings, updateSettings } = useSettings()
 
   const editor = useDocumentEditor({
@@ -46,7 +52,7 @@ export default function EditorPage({ params }: EditorPageProps) {
     async function loadDocument() {
       const doc = await documentStorage.get(id)
       if (!doc) {
-        router.push('/documents')
+        router.push("/documents")
         return
       }
       setDocument(doc)
@@ -60,7 +66,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   useEffect(() => {
     if (editor && content && !editor.isDestroyed) {
       const currentContent = editor.getHTML()
-      if (currentContent !== content && currentContent === '<p></p>') {
+      if (currentContent !== content && currentContent === "<p></p>") {
         editor.commands.setContent(content)
       }
     }
@@ -69,20 +75,20 @@ export default function EditorPage({ params }: EditorPageProps) {
   async function saveDocument() {
     if (!document || !hasUnsavedChanges) return
 
-    setSaveStatus('saving')
+    setSaveStatus("saving")
     try {
       await documentStorage.update(document.id, { content })
       setHasUnsavedChanges(false)
-      setSaveStatus('saved')
+      setSaveStatus("saved")
     } catch {
-      setSaveStatus('idle')
+      setSaveStatus("idle")
     }
   }
 
   // Reset save status after showing "Saved" briefly
   useEffect(() => {
-    if (saveStatus === 'saved') {
-      const timeout = setTimeout(() => setSaveStatus('idle'), 2000)
+    if (saveStatus === "saved") {
+      const timeout = setTimeout(() => setSaveStatus("idle"), 2000)
       return () => clearTimeout(timeout)
     }
   }, [saveStatus])
@@ -102,24 +108,25 @@ export default function EditorPage({ params }: EditorPageProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // Save
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault()
         saveDocument()
       }
       // Command palette with Cmd+Shift+P
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'p') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "p") {
         e.preventDefault()
-        setShowCommandPalette(true)
+        setSidebarOpen(true)
+        setSidebarMode("commands")
       }
       // Find with Cmd+F
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
         e.preventDefault()
-        setShowFindReplace(true)
-        setShowReplace(false)
+        setSidebarOpen(true)
+        setSidebarMode("find")
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
   }, [saveDocument])
 
   function handleContentChange(newContent: string) {
@@ -132,7 +139,9 @@ export default function EditorPage({ params }: EditorPageProps) {
 
     // Update editor storage so NodeViews can access current values
     if (editor && !editor.isDestroyed) {
-      const storage = editor.storage as unknown as { variable: VariableNodeStorage }
+      const storage = editor.storage as unknown as {
+        variable: VariableNodeStorage
+      }
       storage.variable.variables = newVariables
       // Force re-render of all variable nodes
       editor.view.dispatch(editor.state.tr)
@@ -150,10 +159,17 @@ export default function EditorPage({ params }: EditorPageProps) {
   // Sync variables to editor storage when document loads
   useEffect(() => {
     if (editor && document && !editor.isDestroyed) {
-      const storage = editor.storage as unknown as { variable: VariableNodeStorage }
+      const storage = editor.storage as unknown as {
+        variable: VariableNodeStorage
+      }
       storage.variable.variables = document.variables || []
     }
   }, [editor, document])
+
+  function openSidebar(mode: SidebarMode = "commands") {
+    setSidebarOpen(true)
+    setSidebarMode(mode)
+  }
 
   if (isLoading) {
     return (
@@ -164,70 +180,108 @@ export default function EditorPage({ params }: EditorPageProps) {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col">
-      {/* Top navigation bar */}
-      <header className="shrink-0 h-10 flex items-center justify-between px-4 mt-2">
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push('/documents')}
-                className="h-8 w-8"
-                aria-label="Back to documents"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Back to documents</p>
-            </TooltipContent>
-          </Tooltip>
+    <div className="h-screen bg-background relative">
+      {/* Floating navigation buttons */}
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/documents")}
+              className="size-8"
+              aria-label="Back to documents"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Back to documents</p>
+          </TooltipContent>
+        </Tooltip>
 
-          {/* Save status indicator */}
-          <span className="text-xs text-muted-foreground transition-opacity duration-200">
-            {saveStatus === 'saving' && 'Saving...'}
-            {saveStatus === 'saved' && 'Saved'}
-          </span>
-        </div>
+        {/* Save status indicator */}
+        <span className="text-xs text-muted-foreground">
+          {saveStatus === "saving" && "Saving..."}
+          {saveStatus === "saved" && "Saved"}
+        </span>
+      </div>
 
-        <EditorToolbar onShowCommandPalette={() => setShowCommandPalette(true)} />
-      </header>
+      <div className="absolute top-3 right-3 z-10">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openSidebar("commands")}
+              className="size-8"
+              aria-label="Open command palette"
+            >
+              <Command className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Commands (⌘⇧P)</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
-      {/* Main content area with TOC */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto px-4 flex justify-center relative">
-          <FindReplaceBar
-            editor={editor}
-            open={showFindReplace}
-            onClose={() => setShowFindReplace(false)}
-            showReplace={showReplace}
-            onShowReplaceChange={setShowReplace}
-          />
-          {/* Table of Contents - positioned to the left of content */}
-          {settings.showTableOfContents && (
-            <div className="hidden lg:block w-56 shrink-0 mr-4">
-              <TableOfContents
-                editor={editor}
-                className="sticky top-0 max-h-[calc(100vh-3rem)] overflow-y-auto"
-              />
+      {/* Main content area */}
+      <div className="h-full overflow-hidden">
+        {/* Scrollable content area */}
+        <div
+          className={`h-full overflow-y-auto ${settings.editorStyle === "page" ? "bg-canvas" : ""}`}
+        >
+          <div className="mx-auto px-4 flex justify-center min-h-full">
+            {/* Table of Contents - positioned to the left of content */}
+            {settings.showTableOfContents && (
+              <div className="hidden lg:block w-56 shrink-0 mr-4">
+                <TableOfContents
+                  editor={editor}
+                  className="sticky top-0 max-h-[calc(100vh-3rem)] overflow-y-auto"
+                />
+              </div>
+            )}
+            <div
+              className={`w-full max-w-3xl p-8 ${settings.editorStyle === "page" ? "bg-background shadow-sm" : ""} ${!settings.showCollapsibleSections ? "collapsible-sections-disabled" : ""}`}
+            >
+              <EditorContent editor={editor} />
             </div>
-          )}
-          <div className="w-full max-w-3xl">
-            <EditorContent editor={editor} />
           </div>
         </div>
       </div>
+
+      {/* Command Sidebar - overlays full height on right side */}
+      {sidebarOpen && (
+        <CommandSidebar
+          open={sidebarOpen}
+          onOpenChange={setSidebarOpen}
+          mode={sidebarMode}
+          onModeChange={setSidebarMode}
+          editor={editor}
+          settings={settings}
+          onSettingsChange={updateSettings}
+          onShowShortcuts={() => setShowShortcuts(true)}
+          onShowVariables={() => setShowVariables(true)}
+          documentTitle={document?.title || "Untitled"}
+          documentFont={document?.font || "system"}
+          variables={document?.variables || []}
+          onVariablesChange={handleVariablesChange}
+        />
+      )}
 
       {/* Floating stats - bottom center */}
       {editor && settings.showCounter && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10">
           <button
-            onClick={() => updateSettings({ counter: settings.counter === 'words' ? 'characters' : 'words' })}
+            onClick={() =>
+              updateSettings({
+                counter: settings.counter === "words" ? "characters" : "words",
+              })
+            }
             className="text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border hover:bg-muted/50 transition-colors"
           >
-            {settings.counter === 'words'
+            {settings.counter === "words"
               ? `${editor.storage.characterCount.words()} words`
               : `${editor.storage.characterCount.characters()} characters`}
           </button>
@@ -237,27 +291,6 @@ export default function EditorPage({ params }: EditorPageProps) {
       <KeyboardShortcutsDialog
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
-      />
-
-      <CommandPalette
-        open={showCommandPalette}
-        onOpenChange={setShowCommandPalette}
-        editor={editor}
-        settings={settings}
-        onSettingsChange={updateSettings}
-        onShowShortcuts={() => setShowShortcuts(true)}
-        onShowVariables={() => setShowVariables(true)}
-        onShowFind={() => {
-          setShowFindReplace(true)
-          setShowReplace(false)
-        }}
-        onShowFindReplace={() => {
-          setShowFindReplace(true)
-          setShowReplace(true)
-        }}
-        variables={document?.variables || []}
-        documentTitle={document?.title || 'Untitled'}
-        documentFont={document?.font || 'system'}
       />
 
       <VariablesDialog
