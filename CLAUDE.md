@@ -5,8 +5,7 @@ A minimal, distraction-free text editor built with Next.js 16, React 19, and Tip
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router) with React Compiler
-- **React**: 19
-- **Editor**: Tiptap (rich text editor)
+- **Editor**: Tiptap v3
 - **Styling**: Tailwind CSS 4 with OKLCH color system
 - **Components**: shadcn/ui
 
@@ -19,109 +18,91 @@ app/
   globals.css             # Global styles including Tiptap editor styles
 components/
   editor/
-    CommandPalette.tsx          # Command palette (Cmd+Shift+P) with all actions
-    EditorBubbleMenu.tsx        # Floating menu on text selection (formatting + links)
-    EditorContent.tsx           # Tiptap editor wrapper
-    EditorToolbar.tsx           # Top-right toolbar (command palette button)
-    KeyboardShortcutsDialog.tsx # Keyboard shortcuts help dialog
-    TableOfContents.tsx         # Sidebar navigation for headings
-    VariablesDialog.tsx         # Dialog for managing document variables
-  ui/                           # shadcn/ui components
+    CollapseToggleButton.tsx    # Heading collapse chevron button
+    CommandSidebar.tsx           # Sidebar (Cmd+Shift+P) with commands, find, comments
+    EditorBubbleMenu.tsx         # Floating menu on text selection
+    EditorContent.tsx            # Tiptap editor wrapper
+    KeyboardShortcutsDialog.tsx  # Keyboard shortcuts help dialog
+    TableOfContents.tsx          # Sidebar heading navigation
+    VariablesDialog.tsx          # Document variables dialog
+  ui/                            # shadcn/ui components
 hooks/
   use-document-editor.ts    # Tiptap editor hook with extensions
-  use-settings.ts           # Settings hook (theme, counter preferences)
+  use-settings.ts           # Settings hook
   use-table-of-contents.ts  # Reactive heading extraction for TOC
 lib/
-  documents.ts            # Document storage utilities
-  settings.ts             # Settings storage and theme application
-  editor/extensions/      # Tiptap extensions configuration
+  documents.ts              # Document storage (localStorage, will move to DB)
+  documents/types.ts        # Document, Comment, Variable interfaces
+  documents/local-storage.ts # localStorage implementation
+  settings.ts               # Settings storage and theme application
+  editor/extensions/        # Custom Tiptap extensions
+    collapsible-headings.ts # Heading collapse/expand
+    comment-mark.ts         # Comment highlight marks
+    variable-node.ts        # Dynamic variable placeholders
+    search-highlight.ts     # Search & replace decorations
 ```
 
 ## Design Decisions
 
 ### Layout
 
-The editor uses a minimal UI with a top navigation bar:
-
-- **Top nav bar**: Back button (left), toolbar with command palette button (right)
-- **Table of Contents**: Optional sidebar to the left of content, visible on lg+ screens (1024px)
-- **Editor content**: Centered, max-width 3xl
-- **Bubble menu**: Appears on text selection with formatting buttons and link editing
-- **Counter**: Fixed bottom-center, click to toggle between words/characters
+- Floating back button (top-left), command button (top-right)
+- Optional Table of Contents sidebar left of content (lg+ screens)
+- Editor content centered, max-width 3xl
+- Bubble menu on text selection (formatting, links, add comment)
+- Word/character counter fixed bottom-center
 
 ### Settings
 
-Settings are stored in localStorage and include:
+Stored in localStorage (`lib/settings.ts`):
 
-- **Theme**: light, dark, or system
-- **Show counter**: toggle visibility of word/character count
-- **Counter type**: words or characters (toggled by clicking the counter itself)
-- **Show Table of Contents**: toggle TOC sidebar visibility
+- `theme`: light / dark / system
+- `showCounter`, `counter`: word/character count toggle
+- `showTableOfContents`: TOC sidebar visibility
+- `editorStyle`: seamless / page (with background and shadow)
+- `showCollapsibleSections`: heading collapse chevrons
+- `showComments`: comment highlights and interactions
 
-### Editor Styling
+### Comments
 
-- Borderless design - the editor appears as "one giant white space"
-- Tiptap styles defined in `globals.css` under `.tiptap-editor`
-- Supports markdown shortcuts (e.g., `#` for heading, `**text**` for bold)
+Text-anchored comments with threaded replies, managed via the CommandSidebar:
+
+- **Comment Mark**: Tiptap Mark extension (`comment-mark.ts`) that wraps commented text in `<span data-comment-id="..." class="comment-highlight">`
+- **Data model**: Flat `Comment[]` on Document with `parentId` for threading (null = root, string = reply)
+- **Sidebar modes**: `'comments'` (list all threads) and `'comment-thread'` (single thread detail with replies)
+- **Creation**: Select text → bubble menu comment button or "Add Comment" command → sidebar opens with input
+- **Navigation**: Click highlighted text → sidebar opens to thread; click thread in sidebar → scrolls to text
+- **Toggle**: `showComments` setting hides highlights via `.comments-disabled` CSS class
 
 ### Document Variables
 
-Variables allow inserting dynamic placeholders that update throughout the document:
-
-- **Per-document scope**: Each document has its own variables stored in document metadata
-- **Variable Node**: Custom Tiptap atom node (`lib/editor/extensions/variable-node.ts`) that stores `variableId` and looks up value at render time
-- **NodeView rendering**: Variables display their current value and update automatically when the value changes
-- **Deleted handling**: Shows `[Deleted Variable]` in red if a variable is removed but still referenced
-- **Word export**: Variables resolve to their values when exporting to Word
+Per-document dynamic placeholders stored in document metadata. Custom atom node (`variable-node.ts`) stores `variableId` and resolves value at render time. Shows `[Deleted Variable]` if referenced variable is removed.
 
 ### Title and Subtitle Nodes
 
-Dedicated nodes for document title and subtitle, separate from headings:
-
-- **Title node**: Large, bold text at document top (Cmd+Alt+0)
-- **Subtitle node**: Muted text below title (Cmd+Alt+9)
-- **Not collapsible**: Unlike headings, these don't have collapse functionality
-- **HTML representation**: Uses `div[data-type="title"]` and `div[data-type="subtitle"]` to avoid conflicts with heading parsing
-
-### Table of Contents
-
-Sidebar navigation for document structure:
-
-- **Heading extraction**: Uses `useEditorState` for reactive updates via `use-table-of-contents.ts`
-- **Click to navigate**: Clicking a heading jumps cursor to that position
-- **Active highlighting**: Current section highlighted based on cursor position
-- **Responsive**: Hidden on screens smaller than lg (1024px)
-- **Toggle**: Can be shown/hidden via command palette or settings
+Dedicated nodes (not headings) for document title/subtitle. Uses `div[data-type="title|subtitle"]` to avoid heading conflicts. Not collapsible.
 
 ### Collapsible Headings
 
-Headings can be collapsed to hide content beneath them:
-
-- **Collapse toggle**: Chevron button appears on hover next to headings (only when heading has text)
-- **Command palette**: "Collapse Section" / "Expand Section" command for current heading
-- **Visual state**: Collapsed content uses `display: none` (no animations per CLAUDE.md guidelines)
-
-### React Compiler
-
-We use the React Compiler (`reactCompiler: true` in next.config.ts) instead of manual memoization. No need for `useCallback` or `useMemo` for performance - the compiler handles it.
+Chevron toggle on hover next to headings. Collapsed content hidden with `display: none`. Can be toggled globally via `showCollapsibleSections` setting.
 
 ### Tiptap v3
 
-We use Tiptap v3 which has some differences from v2:
+- `BubbleMenu` import from `@tiptap/react/menus` (not `@tiptap/react`)
+- Use `useEditorState` for reactive `editor.isActive()` checks
+- Disable `link: false` in StarterKit when configuring Link separately
 
-- **BubbleMenu import**: `import { BubbleMenu } from '@tiptap/react/menus'` (not `@tiptap/react`)
-- **Reactive state**: Use `useEditorState` hook for reactive `editor.isActive()` checks. Without it, active states don't update in React.
-- **StarterKit includes Link**: Must disable with `link: false` in StarterKit config if configuring Link separately
-- **Link extension**: `openOnClick: false` + `enableClickSelection: true` for click-to-select behavior
+### React Compiler
+
+Uses React Compiler (`reactCompiler: true` in next.config.ts) instead of manual `useCallback`/`useMemo`.
 
 ## Notes
 
-- Documents are stored in browser localStorage via `lib/documents.ts`
-- Auto-save triggers after 1 second of inactivity
-- Cmd/Ctrl+S manually saves
-- Cmd/Ctrl+Shift+P opens the command palette
-- Will be replaced by database logic at a later time
+- Documents stored in browser localStorage, will move to database later
+- Auto-save after 1s inactivity; Cmd+S manual save
+- Cmd+Shift+P opens command sidebar; Cmd+F opens find
 
 ## Coding Guidelines
 
-- **No delay/timeout hacks**: Don't use `setTimeout`, `delayDuration`, or similar timing-based workarounds to fix UI issues. Find the root cause and fix it properly.
+- **No delay/timeout hacks**: Don't use `setTimeout` or timing workarounds. Fix the root cause.
+- **OKLCH colors**: Use direct `oklch()` values, not relative `oklch(from var(...))` syntax (limited browser support).

@@ -19,6 +19,11 @@ function getStoredDocuments(): Document[] {
       ...doc,
       font: doc.font ?? 'system',
       variables: doc.variables ?? [],
+      comments: (doc.comments ?? []).map(c => ({
+        ...c,
+        createdAt: new Date(c.createdAt),
+        updatedAt: new Date(c.updatedAt),
+      })),
       createdAt: new Date(doc.createdAt),
       updatedAt: new Date(doc.updatedAt),
     }))
@@ -55,6 +60,7 @@ export const localStorageAdapter: DocumentStorage = {
       content,
       font: 'system',
       variables: [],
+      comments: [],
       createdAt: now,
       updatedAt: now,
     }
@@ -65,7 +71,7 @@ export const localStorageAdapter: DocumentStorage = {
     return newDoc
   },
 
-  async update(id: string, data: Partial<Pick<Document, 'title' | 'content' | 'font' | 'variables'>>): Promise<Document> {
+  async update(id: string, data: Partial<Pick<Document, 'title' | 'content' | 'font' | 'variables' | 'comments'>>): Promise<Document> {
     const docs = getStoredDocuments()
     const index = docs.findIndex(doc => doc.id === id)
 

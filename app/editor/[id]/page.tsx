@@ -6,14 +6,16 @@ import { ArrowLeft, Command } from "lucide-react"
 import { documentStorage, type Document } from "@/lib/documents"
 import { EditorContent } from "@/components/editor/EditorContent"
 import { useDocumentEditor } from "@/hooks/use-document-editor"
+import { useAutoSave } from "@/hooks/use-auto-save"
 import { KeyboardShortcutsDialog } from "@/components/editor/KeyboardShortcutsDialog"
 import {
   CommandSidebar,
   type SidebarMode,
 } from "@/components/editor/CommandSidebar"
 import { VariablesDialog } from "@/components/editor/VariablesDialog"
-import type { Variable } from "@/lib/documents/types"
+import type { Comment, Variable } from "@/lib/documents/types"
 import type { VariableNodeStorage } from "@/lib/editor/extensions/variable-node"
+import type { CommentMarkStorage } from "@/lib/editor/extensions/comment-mark"
 import { useSettings } from "@/hooks/use-settings"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,18 +36,25 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [content, setContent] = useState("")
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle",
-  )
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showVariables, setShowVariables] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("commands")
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null)
+  const [addCommentMode, setAddCommentMode] = useState(false)
   const { settings, updateSettings } = useSettings()
+
+  const handleCommentClick = (commentId: string) => {
+    setExpandedCommentId(commentId)
+    setAddCommentMode(false)
+    setSidebarOpen(true)
+    setSidebarMode("comments")
+  }
 
   const editor = useDocumentEditor({
     content,
     onUpdate: handleContentChange,
+    onCommentClick: settings.showComments ? handleCommentClick : undefined,
   })
 
   useEffect(() => {
@@ -72,37 +81,12 @@ export default function EditorPage({ params }: EditorPageProps) {
     }
   }, [editor, content])
 
-  async function saveDocument() {
-    if (!document || !hasUnsavedChanges) return
-
-    setSaveStatus("saving")
-    try {
-      await documentStorage.update(document.id, { content })
-      setHasUnsavedChanges(false)
-      setSaveStatus("saved")
-    } catch {
-      setSaveStatus("idle")
-    }
-  }
-
-  // Reset save status after showing "Saved" briefly
-  useEffect(() => {
-    if (saveStatus === "saved") {
-      const timeout = setTimeout(() => setSaveStatus("idle"), 2000)
-      return () => clearTimeout(timeout)
-    }
-  }, [saveStatus])
-
-  // Auto-save after 1 second of inactivity
-  useEffect(() => {
-    if (!hasUnsavedChanges || !document) return
-
-    const timeout = setTimeout(() => {
-      saveDocument()
-    }, 1000)
-
-    return () => clearTimeout(timeout)
-  }, [hasUnsavedChanges, document, saveDocument])
+  const { saveStatus, saveDocument } = useAutoSave({
+    document,
+    content,
+    hasUnsavedChanges,
+    onSaved: () => setHasUnsavedChanges(false),
+  })
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -163,6 +147,38 @@ export default function EditorPage({ params }: EditorPageProps) {
         variable: VariableNodeStorage
       }
       storage.variable.variables = document.variables || []
+    }
+  }, [editor, document])
+
+  async function handleCommentsChange(newComments: Comment[]) {
+    if (!document) return
+
+    // Update editor storage so marks can access comment data
+    if (editor && !editor.isDestroyed) {
+      const storage = editor.storage as unknown as {
+        comment: CommentMarkStorage
+      }
+      storage.comment.comments = newComments
+      // Force re-render to update resolved styling
+      editor.view.dispatch(editor.state.tr)
+    }
+
+    // Save to document
+    try {
+      await documentStorage.update(document.id, { comments: newComments })
+      setDocument({ ...document, comments: newComments })
+    } catch {
+      // Silent fail
+    }
+  }
+
+  // Sync comments to editor storage when document loads
+  useEffect(() => {
+    if (editor && document && !editor.isDestroyed) {
+      const storage = editor.storage as unknown as {
+        comment: CommentMarkStorage
+      }
+      storage.comment.comments = document.comments || []
     }
   }, [editor, document])
 
@@ -243,9 +259,20 @@ export default function EditorPage({ params }: EditorPageProps) {
               </div>
             )}
             <div
-              className={`w-full max-w-3xl p-8 ${settings.editorStyle === "page" ? "bg-background shadow-sm" : ""} ${!settings.showCollapsibleSections ? "collapsible-sections-disabled" : ""}`}
+              className={`w-full max-w-3xl p-8 ${settings.editorStyle === "page" ? "bg-background shadow-sm" : ""} ${!settings.showCollapsibleSections ? "collapsible-sections-disabled" : ""} ${!settings.showComments ? "comments-disabled" : ""}`}
             >
-              <EditorContent editor={editor} />
+              <EditorContent
+                editor={editor}
+                onAddComment={
+                  settings.showComments
+                    ? () => {
+                        setAddCommentMode(true)
+                        setSidebarOpen(true)
+                        setSidebarMode("comments")
+                      }
+                    : undefined
+                }
+              />
             </div>
           </div>
         </div>
@@ -267,6 +294,11 @@ export default function EditorPage({ params }: EditorPageProps) {
           documentFont={document?.font || "system"}
           variables={document?.variables || []}
           onVariablesChange={handleVariablesChange}
+          comments={document?.comments || []}
+          onCommentsChange={handleCommentsChange}
+          addCommentMode={addCommentMode}
+          onAddCommentModeChange={setAddCommentMode}
+          initialExpandedCommentId={expandedCommentId}
         />
       )}
 

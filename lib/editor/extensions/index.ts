@@ -15,6 +15,7 @@ import { CollapsibleHeadings } from './collapsible-headings'
 import { VariableNode } from './variable-node'
 import { Title, Subtitle } from './title-subtitle'
 import { SearchHighlight } from './search-highlight'
+import { CommentMark } from './comment-mark'
 
 export const extensions = [
   StarterKit.configure({
@@ -58,4 +59,5 @@ export const extensions = [
   Title,
   Subtitle,
   SearchHighlight,
+  CommentMark,
 ]

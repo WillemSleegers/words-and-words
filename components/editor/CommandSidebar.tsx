@@ -32,7 +32,6 @@ import {
   Eye,
   EyeOff,
   Type,
-  ChevronLeft,
   ChevronUp,
   ChevronDown,
   FileDown,
@@ -42,15 +41,17 @@ import {
   Replace,
   ReplaceAll,
   CaseSensitive,
-  X,
   Square,
+  MessageSquare,
 } from 'lucide-react'
 import { exportToWord } from '@/lib/export-to-word'
 import type { Settings as SettingsType } from '@/lib/settings'
-import type { FontFamily, Variable as VariableType } from '@/lib/documents/types'
+import type { Comment, FontFamily, Variable as VariableType } from '@/lib/documents/types'
 import type { CollapsibleHeadingsStorage } from '@/lib/editor/extensions/collapsible-headings'
 import type { SearchHighlightStorage } from '@/lib/editor/extensions/search-highlight'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { SidebarHeader } from './sidebar/SidebarHeader'
+import { SidebarCommentsList } from './sidebar/SidebarCommentsList'
 
 interface Command {
   id: string
@@ -62,7 +63,7 @@ interface Command {
   hasSubmenu?: boolean
 }
 
-export type SidebarMode = 'commands' | 'find' | 'find-replace' | 'font' | 'variables'
+export type SidebarMode = 'commands' | 'find' | 'find-replace' | 'font' | 'variables' | 'comments'
 
 interface CommandSidebarProps {
   open: boolean
@@ -78,6 +79,11 @@ interface CommandSidebarProps {
   documentFont: FontFamily
   variables: VariableType[]
   onVariablesChange: (variables: VariableType[]) => void
+  comments: Comment[]
+  onCommentsChange: (comments: Comment[]) => void
+  addCommentMode: boolean
+  onAddCommentModeChange: (addMode: boolean) => void
+  initialExpandedCommentId?: string | null
 }
 
 const fonts: { id: string; label: string; fontFamily: string; description: string }[] = [
@@ -102,6 +108,11 @@ export function CommandSidebar({
   documentTitle,
   documentFont,
   variables,
+  comments,
+  onCommentsChange,
+  addCommentMode,
+  onAddCommentModeChange,
+  initialExpandedCommentId,
 }: CommandSidebarProps) {
   const [search, setSearch] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -176,6 +187,7 @@ export function CommandSidebar({
       if (e.key === 'Escape') {
         e.preventDefault()
         onOpenChange(false)
+        editor?.commands.focus()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -321,6 +333,10 @@ export function CommandSidebar({
     { id: 'insert-variable', label: 'Insert Variable', icon: <Variable className="h-4 w-4" />, action: () => { onModeChange('variables'); setSearch('') }, group: 'Insert', keywords: ['placeholder', 'template'], hasSubmenu: variables.length > 0 },
     { id: 'manage-variables', label: 'Manage Variables', icon: <Variable className="h-4 w-4" />, action: () => onShowVariables(), group: 'Insert', keywords: ['placeholder', 'template', 'edit'] },
     // Actions
+    ...(settings.showComments ? [
+      { id: 'add-comment', label: 'Add Comment', icon: <MessageSquare className="h-4 w-4" />, action: () => { onAddCommentModeChange(true); onModeChange('comments') }, group: 'Actions', keywords: ['comment', 'annotate', 'note'], hasSubmenu: true },
+      { id: 'show-comments', label: 'Show Comments', icon: <MessageSquare className="h-4 w-4" />, action: () => { onAddCommentModeChange(false); onModeChange('comments') }, group: 'Actions', keywords: ['comment', 'list', 'view', 'annotations'], hasSubmenu: true },
+    ] : []),
     { id: 'find', label: 'Find', icon: <Search className="h-4 w-4" />, action: () => onModeChange('find'), group: 'Actions', keywords: ['search'], hasSubmenu: true },
     { id: 'find-replace', label: 'Find & Replace', icon: <Search className="h-4 w-4" />, action: () => onModeChange('find-replace'), group: 'Actions', keywords: ['search', 'replace', 'substitute'], hasSubmenu: true },
     { id: 'undo', label: 'Undo', icon: <Undo className="h-4 w-4" />, action: () => editor?.chain().focus().undo().run(), group: 'Actions' },
@@ -334,6 +350,7 @@ export function CommandSidebar({
     { id: 'toggle-counter', label: settings.showCounter ? 'Hide Word Count' : 'Show Word Count', icon: settings.showCounter ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />, action: () => onSettingsChange({ showCounter: !settings.showCounter }), group: 'Settings', keywords: ['counter', 'words'] },
     { id: 'toggle-toc', label: settings.showTableOfContents ? 'Hide Table of Contents' : 'Show Table of Contents', icon: <ListTree className="h-4 w-4" />, action: () => onSettingsChange({ showTableOfContents: !settings.showTableOfContents }), group: 'Settings', keywords: ['toc', 'outline'] },
     { id: 'toggle-collapsible-sections', label: settings.showCollapsibleSections ? 'Disable Collapsible Sections' : 'Enable Collapsible Sections', icon: <ChevronsUpDown className="h-4 w-4" />, action: () => onSettingsChange({ showCollapsibleSections: !settings.showCollapsibleSections }), group: 'Settings', keywords: ['collapse', 'fold', 'headings', 'chevron'] },
+    { id: 'toggle-comments', label: settings.showComments ? 'Disable Comments' : 'Enable Comments', icon: <MessageSquare className="h-4 w-4" />, action: () => onSettingsChange({ showComments: !settings.showComments }), group: 'Settings', keywords: ['comment', 'annotation', 'note'] },
     { id: 'toggle-page-style', label: settings.editorStyle === 'page' ? 'Editor Style: Seamless' : 'Editor Style: Page', icon: <Square className="h-4 w-4" />, action: () => onSettingsChange({ editorStyle: settings.editorStyle === 'page' ? 'seamless' : 'page' }), group: 'Settings', keywords: ['view', 'background', 'canvas'] },
     { id: 'font', label: 'Font', icon: <Type className="h-4 w-4" />, action: () => { onModeChange('font'); setSearch('') }, group: 'Settings', keywords: ['typeface'], hasSubmenu: true },
     // Help
@@ -387,37 +404,11 @@ export function CommandSidebar({
   if (mode === 'find' || mode === 'find-replace') {
     return (
       <div className="absolute right-0 top-0 bottom-0 w-72 border-l bg-background flex flex-col shadow-lg z-20">
-        <div className="p-3 border-b flex items-center justify-between">
-          <h3 className="font-medium text-sm">{mode === 'find' ? 'Find' : 'Find & Replace'}</h3>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onModeChange('commands')}
-                  aria-label="Back to commands"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Back to commands</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onOpenChange(false)}
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Close (Escape)</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+        <SidebarHeader
+          title={mode === 'find' ? 'Find' : 'Find & Replace'}
+          onBack={() => onModeChange('commands')}
+          onClose={() => onOpenChange(false)}
+        />
 
         <div className="p-3 space-y-3">
           {/* Search input */}
@@ -554,37 +545,11 @@ export function CommandSidebar({
   if (mode === 'font') {
     return (
       <div className="absolute right-0 top-0 bottom-0 w-72 border-l bg-background flex flex-col shadow-lg z-20">
-        <div className="p-3 border-b flex items-center justify-between">
-          <h3 className="font-medium text-sm">Select Font</h3>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onModeChange('commands')}
-                  aria-label="Back to commands"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Back to commands</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onOpenChange(false)}
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Close (Escape)</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+        <SidebarHeader
+          title="Select Font"
+          onBack={() => onModeChange('commands')}
+          onClose={() => onOpenChange(false)}
+        />
         <div className="flex-1 overflow-y-auto p-2">
           {fonts.map((font) => (
             <button
@@ -608,37 +573,11 @@ export function CommandSidebar({
   if (mode === 'variables') {
     return (
       <div className="absolute right-0 top-0 bottom-0 w-72 border-l bg-background flex flex-col shadow-lg z-20">
-        <div className="p-3 border-b flex items-center justify-between">
-          <h3 className="font-medium text-sm">Insert Variable</h3>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onModeChange('commands')}
-                  aria-label="Back to commands"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Back to commands</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => onOpenChange(false)}
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Close (Escape)</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+        <SidebarHeader
+          title="Insert Variable"
+          onBack={() => onModeChange('commands')}
+          onClose={() => onOpenChange(false)}
+        />
         <div className="flex-1 overflow-y-auto p-2">
           {variables.length === 0 ? (
             <div className="text-center text-muted-foreground text-sm py-8">
@@ -667,25 +606,26 @@ export function CommandSidebar({
     )
   }
 
+  // Render comments mode
+  if (mode === 'comments') {
+    return (
+      <SidebarCommentsList
+        editor={editor}
+        comments={comments}
+        onCommentsChange={onCommentsChange}
+        onBack={() => onModeChange('commands')}
+        onClose={() => onOpenChange(false)}
+        addMode={addCommentMode}
+        initialExpandedId={initialExpandedCommentId}
+      />
+    )
+  }
+
+
   // Render main commands mode
   return (
     <div className="absolute right-0 top-0 bottom-0 w-72 border-l bg-background flex flex-col shadow-lg z-20">
-      <div className="p-3 border-b flex items-center justify-between">
-        <h3 className="font-medium text-sm">Commands</h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Close (Escape)</TooltipContent>
-        </Tooltip>
-      </div>
+      <SidebarHeader title="Commands" onClose={() => onOpenChange(false)} />
 
       <div className="p-3 border-b">
         <Input

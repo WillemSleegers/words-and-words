@@ -30,6 +30,12 @@
 - [ ] Additional export formats (PDF, Markdown, HTML, plain text)
 - [ ] Import documents from file
 
+### Comments
+
+- [ ] Handle orphaned comments when the annotated text is deleted
+  - When text with a comment mark is removed, the comment data remains in the document's `comments` array
+  - Should detect when a comment's mark no longer exists in the editor content and clean up (or flag) the orphaned comment
+
 ### Editor Features
 
 - [ ] Paste as plain text (Cmd+Shift+V)

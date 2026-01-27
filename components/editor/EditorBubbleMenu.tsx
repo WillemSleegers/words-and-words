@@ -12,6 +12,7 @@ import {
   Link,
   Unlink,
   ExternalLink,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -24,9 +25,10 @@ import { Button } from '@/components/ui/button'
 
 interface EditorBubbleMenuProps {
   editor: Editor
+  onAddComment?: () => void
 }
 
-export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
+export function EditorBubbleMenu({ editor, onAddComment }: EditorBubbleMenuProps) {
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
 
@@ -173,6 +175,21 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
           </form>
         </PopoverContent>
       </Popover>
+
+      {/* Comment button */}
+      {onAddComment && (
+        <>
+        {/* Separator */}
+        <div className="w-px h-4 bg-border mx-0.5" />
+        <button
+          onClick={onAddComment}
+          className="rounded p-1.5 hover:bg-muted transition-colors"
+          title="Add Comment"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </button>
+        </>
+      )}
     </BubbleMenu>
   )
 }
