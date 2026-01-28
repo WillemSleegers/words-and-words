@@ -298,7 +298,6 @@ export default function EditorPage({ params }: EditorPageProps) {
           documentTitle={document?.title || "Untitled"}
           documentFont={document?.font || "system"}
           variables={document?.variables || []}
-          onVariablesChange={handleVariablesChange}
           comments={document?.comments || []}
           onCommentsChange={handleCommentsChange}
           addCommentMode={addCommentMode}

@@ -1,7 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { documentStorage, type Document } from "@/lib/documents"
+
+const AUTO_SAVE_DELAY_MS = 1000
+const SAVED_INDICATOR_MS = 2000
 
 type SaveStatus = "idle" | "saving" | "saved"
 
@@ -20,13 +23,22 @@ export function useAutoSave({
 }: UseAutoSaveOptions) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
 
+  // Use refs to avoid stale closures in the debounced save
+  const documentRef = useRef(document)
+  const contentRef = useRef(content)
+  const onSavedRef = useRef(onSaved)
+  documentRef.current = document
+  contentRef.current = content
+  onSavedRef.current = onSaved
+
   async function saveDocument() {
-    if (!document || !hasUnsavedChanges) return
+    const doc = documentRef.current
+    if (!doc) return
 
     setSaveStatus("saving")
     try {
-      await documentStorage.update(document.id, { content })
-      onSaved()
+      await documentStorage.update(doc.id, { content: contentRef.current })
+      onSavedRef.current()
       setSaveStatus("saved")
     } catch {
       setSaveStatus("idle")
@@ -36,21 +48,21 @@ export function useAutoSave({
   // Reset save status after showing "Saved" briefly
   useEffect(() => {
     if (saveStatus === "saved") {
-      const timeout = setTimeout(() => setSaveStatus("idle"), 2000)
+      const timeout = setTimeout(() => setSaveStatus("idle"), SAVED_INDICATOR_MS)
       return () => clearTimeout(timeout)
     }
   }, [saveStatus])
 
-  // Auto-save after 1 second of inactivity
+  // Auto-save after inactivity
   useEffect(() => {
     if (!hasUnsavedChanges || !document) return
 
     const timeout = setTimeout(() => {
       saveDocument()
-    }, 1000)
+    }, AUTO_SAVE_DELAY_MS)
 
     return () => clearTimeout(timeout)
-  }, [hasUnsavedChanges, document, saveDocument])
+  }, [hasUnsavedChanges, content]) // eslint-disable-line react-hooks/exhaustive-deps -- debounce on content changes
 
   return { saveStatus, saveDocument }
 }
