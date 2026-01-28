@@ -13,6 +13,10 @@ import {
   Unlink,
   ExternalLink,
   MessageSquare,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -42,6 +46,7 @@ export function EditorBubbleMenu({ editor, onAddComment }: EditorBubbleMenuProps
       isCode: ctx.editor.isActive('code'),
       isLink: ctx.editor.isActive('link'),
       linkHref: ctx.editor.getAttributes('link').href as string | undefined,
+      textAlign: (ctx.editor.getAttributes('paragraph').textAlign || ctx.editor.getAttributes('heading').textAlign || 'left') as string,
     }),
   })
 
@@ -111,6 +116,29 @@ export function EditorBubbleMenu({ editor, onAddComment }: EditorBubbleMenuProps
           className={cn(
             'rounded p-1.5 hover:bg-muted transition-colors',
             item.isActive && 'bg-muted text-foreground'
+          )}
+          title={item.title}
+        >
+          <item.icon className="h-4 w-4" />
+        </button>
+      ))}
+
+      {/* Separator */}
+      <div className="w-px h-4 bg-border mx-0.5" />
+
+      {/* Text alignment */}
+      {[
+        { icon: AlignLeft, align: 'left', title: 'Align Left' },
+        { icon: AlignCenter, align: 'center', title: 'Align Center' },
+        { icon: AlignRight, align: 'right', title: 'Align Right' },
+        { icon: AlignJustify, align: 'justify', title: 'Justify' },
+      ].map((item) => (
+        <button
+          key={item.align}
+          onClick={() => editor.chain().focus().setTextAlign(item.align).run()}
+          className={cn(
+            'rounded p-1.5 hover:bg-muted transition-colors',
+            editorState.textAlign === item.align && 'bg-muted text-foreground'
           )}
           title={item.title}
         >

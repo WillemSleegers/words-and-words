@@ -43,6 +43,10 @@ import {
   CaseSensitive,
   Square,
   MessageSquare,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
 } from 'lucide-react'
 import { exportToWord } from '@/lib/export-to-word'
 import type { Settings as SettingsType } from '@/lib/settings'
@@ -314,6 +318,10 @@ export function CommandSidebar({
     { id: 'underline', label: 'Underline', icon: <Underline className="h-4 w-4" />, action: () => editor?.chain().focus().toggleUnderline().run(), group: 'Formatting' },
     { id: 'strikethrough', label: 'Strikethrough', icon: <Strikethrough className="h-4 w-4" />, action: () => editor?.chain().focus().toggleStrike().run(), group: 'Formatting', keywords: ['strike', 'delete'] },
     { id: 'code', label: 'Inline Code', icon: <Code className="h-4 w-4" />, action: () => editor?.chain().focus().toggleCode().run(), group: 'Formatting', keywords: ['monospace'] },
+    { id: 'align-left', label: 'Align Left', icon: <AlignLeft className="h-4 w-4" />, action: () => editor?.chain().focus().setTextAlign('left').run(), group: 'Formatting', keywords: ['alignment', 'text align'] },
+    { id: 'align-center', label: 'Align Center', icon: <AlignCenter className="h-4 w-4" />, action: () => editor?.chain().focus().setTextAlign('center').run(), group: 'Formatting', keywords: ['alignment', 'text align'] },
+    { id: 'align-right', label: 'Align Right', icon: <AlignRight className="h-4 w-4" />, action: () => editor?.chain().focus().setTextAlign('right').run(), group: 'Formatting', keywords: ['alignment', 'text align'] },
+    { id: 'align-justify', label: 'Justify', icon: <AlignJustify className="h-4 w-4" />, action: () => editor?.chain().focus().setTextAlign('justify').run(), group: 'Formatting', keywords: ['alignment', 'text align'] },
     // Headings
     { id: 'title', label: 'Title', icon: <Type className="h-4 w-4" />, action: () => editor?.chain().focus().toggleTitle().run(), group: 'Headings', keywords: ['document title'] },
     { id: 'subtitle', label: 'Subtitle', icon: <Type className="h-4 w-4" />, action: () => editor?.chain().focus().toggleSubtitle().run(), group: 'Headings', keywords: ['tagline'] },

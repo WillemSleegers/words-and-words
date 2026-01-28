@@ -42,6 +42,10 @@ const baseShortcutGroups: ShortcutGroup[] = [
       { keys: ['Mod', 'U'], description: 'Underline' },
       { keys: ['Mod', 'Shift', 'S'], description: 'Strikethrough', markdown: '~~text~~' },
       { keys: ['Mod', '`'], description: 'Inline code', markdown: '`code`' },
+      { keys: ['Mod', 'Shift', 'L'], description: 'Align left' },
+      { keys: ['Mod', 'Shift', 'E'], description: 'Align center' },
+      { keys: ['Mod', 'Shift', 'R'], description: 'Align right' },
+      { keys: ['Mod', 'Shift', 'J'], description: 'Justify' },
     ],
   },
   {

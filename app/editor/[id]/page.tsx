@@ -272,6 +272,11 @@ export default function EditorPage({ params }: EditorPageProps) {
                       }
                     : undefined
                 }
+                onFindReplace={() => {
+                  setSidebarOpen(true)
+                  setSidebarMode("find-replace")
+                }}
+                onInsertVariable={() => setShowVariables(true)}
               />
             </div>
           </div>
