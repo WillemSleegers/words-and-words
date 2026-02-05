@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { TableOfContents } from "@/components/editor/TableOfContents"
+import { StatusBar } from "@/components/editor/StatusBar"
 
 interface EditorPageProps {
   params: Promise<{ id: string }>
@@ -61,7 +62,7 @@ export default function EditorPage({ params }: EditorPageProps) {
     async function loadDocument() {
       const doc = await documentStorage.get(id)
       if (!doc) {
-        router.push("/documents")
+        router.push("/")
         return
       }
       setDocument(doc)
@@ -204,7 +205,7 @@ export default function EditorPage({ params }: EditorPageProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/documents")}
+              onClick={() => router.push("/")}
               className="size-8"
               aria-label="Back to documents"
             >
@@ -215,12 +216,6 @@ export default function EditorPage({ params }: EditorPageProps) {
             <p>Back to documents</p>
           </TooltipContent>
         </Tooltip>
-
-        {/* Save status indicator */}
-        <span className="text-xs text-muted-foreground">
-          {saveStatus === "saving" && "Saving..."}
-          {saveStatus === "saved" && "Saved"}
-        </span>
       </div>
 
       <div className="absolute top-3 right-3 z-10">
@@ -306,23 +301,13 @@ export default function EditorPage({ params }: EditorPageProps) {
         />
       )}
 
-      {/* Floating stats - bottom center */}
-      {editor && settings.showCounter && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10">
-          <button
-            onClick={() =>
-              updateSettings({
-                counter: settings.counter === "words" ? "characters" : "words",
-              })
-            }
-            className="text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1.5 rounded-full border hover:bg-muted/50 transition-colors"
-          >
-            {settings.counter === "words"
-              ? `${editor.storage.characterCount.words()} words`
-              : `${editor.storage.characterCount.characters()} characters`}
-          </button>
-        </div>
-      )}
+      <StatusBar
+        editor={editor}
+        settings={settings}
+        onSettingsChange={updateSettings}
+        saveStatus={saveStatus}
+        hasUnsavedChanges={hasUnsavedChanges}
+      />
 
       <KeyboardShortcutsDialog
         open={showShortcuts}

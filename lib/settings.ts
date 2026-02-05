@@ -9,6 +9,7 @@ export interface Settings {
   editorStyle: EditorStyle
   showCollapsibleSections: boolean
   showComments: boolean
+  showSaveStatus: boolean
 }
 
 const STORAGE_KEY = "editor-settings"
@@ -21,6 +22,7 @@ const defaultSettings: Settings = {
   editorStyle: "seamless",
   showCollapsibleSections: false,
   showComments: true,
+  showSaveStatus: true,
 }
 
 export function getSettings(): Settings {
@@ -39,19 +41,4 @@ export function getSettings(): Settings {
 export function saveSettings(settings: Settings): void {
   if (typeof window === "undefined") return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-}
-
-export function applyTheme(theme: Settings["theme"]): void {
-  if (typeof window === "undefined") return
-
-  const root = document.documentElement
-
-  if (theme === "system") {
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches
-    root.classList.toggle("dark", prefersDark)
-  } else {
-    root.classList.toggle("dark", theme === "dark")
-  }
 }
