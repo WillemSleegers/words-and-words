@@ -35,6 +35,13 @@
 - [ ] Handle orphaned comments when the annotated text is deleted
   - When text with a comment mark is removed, the comment data remains in the document's `comments` array
   - Should detect when a comment's mark no longer exists in the editor content and clean up (or flag) the orphaned comment
+- [ ] Comment editing — allow editing existing comment/reply text
+  - `updatedAt` field exists but is never used; show "edited" indicator
+- [ ] Deeper threading — allow replies to replies (nested threads)
+- [ ] Comment search/filter in the sidebar
+- [ ] Rich text in comment/reply bodies (basic formatting: bold, italic, links)
+- [ ] Have order of comments match order they appear in the text?
+- [ ] Bulk operations (e.g. resolve all, delete resolved)
 
 ### Editor Features
 

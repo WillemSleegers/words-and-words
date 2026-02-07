@@ -54,6 +54,29 @@ export function SidebarCommentsList({
   })
   const hasSelection = selectionInfo?.hasSelection ?? false
 
+  // Reactively track which comment IDs have marks in the document
+  const commentIdsInDocStr = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      if (!e) return null
+      const ids: string[] = []
+      e.state.doc.descendants((node) => {
+        if (node.isText) {
+          for (const mark of node.marks) {
+            if (mark.type.name === 'comment' && mark.attrs.commentId) {
+              const id = mark.attrs.commentId as string
+              if (!ids.includes(id)) ids.push(id)
+            }
+          }
+        }
+      })
+      return ids.sort().join(',')
+    },
+  })
+  const commentIdsInDoc = new Set(
+    commentIdsInDocStr ? commentIdsInDocStr.split(',') : []
+  )
+
   // Compute word range at cursor for auto-select
   const wordRange = (() => {
     if (!editor) return null
@@ -119,12 +142,16 @@ export function SidebarCommentsList({
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     ),
   }))
-  const openThreads = threads.filter(t => !t.root.resolved)
-  const resolvedThreads = threads.filter(t => t.root.resolved)
+  const hasEditorLoaded = editor !== null && !editor.isDestroyed
+  const orphanedThreads = hasEditorLoaded ? threads.filter(t => !commentIdsInDoc.has(t.root.id)) : []
+  const nonOrphanedThreads = hasEditorLoaded ? threads.filter(t => commentIdsInDoc.has(t.root.id)) : threads
+  const openThreads = nonOrphanedThreads.filter(t => !t.root.resolved)
+  const resolvedThreads = nonOrphanedThreads.filter(t => t.root.resolved)
 
   // Flat list of navigable thread IDs: open threads + resolved (if expanded)
   const navigableThreadIds = [
     ...openThreads.map(t => t.root.id),
+    ...orphanedThreads.map(t => t.root.id),
     ...(showResolved ? resolvedThreads.map(t => t.root.id) : []),
   ]
 
@@ -272,6 +299,16 @@ export function SidebarCommentsList({
     setReplyText('')
   }
 
+  function handleCleanupOrphaned() {
+    const orphanedIds = new Set(orphanedThreads.map(t => t.root.id))
+    const newComments = comments.filter(
+      c => !orphanedIds.has(c.id) && !orphanedIds.has(c.parentId ?? '')
+    )
+    onCommentsChange(newComments)
+    setExpandedThreadId(null)
+    setReplyText('')
+  }
+
   function navigateToComment(commentId: string) {
     if (!editor) return
 
@@ -297,12 +334,12 @@ export function SidebarCommentsList({
     }
   }
 
-  function renderThread(root: Comment, replies: Comment[], isResolved: boolean) {
+  function renderThread(root: Comment, replies: Comment[], isResolved: boolean, isOrphaned: boolean = false) {
     const isSelected = navigableThreadIds[selectedIndex] === root.id
     const isExpanded = expandedThreadId === root.id
 
     return (
-      <div key={root.id} className={isResolved && !isExpanded ? 'opacity-60' : ''}>
+      <div key={root.id} className={(isResolved || isOrphaned) && !isExpanded ? 'opacity-60' : ''}>
         {/* Thread summary / toggle */}
         <button
           data-selected={isSelected && !expandedThreadId}
@@ -312,7 +349,7 @@ export function SidebarCommentsList({
           }`}
         >
           <div className="text-sm line-clamp-2 flex items-center gap-1">
-            {isResolved && <Check className="h-3 w-3 shrink-0" />}
+            {isResolved && !isOrphaned && <Check className="h-3 w-3 shrink-0" />}
             {root.text}
           </div>
           {!isExpanded && replies.length > 0 && (
@@ -325,13 +362,19 @@ export function SidebarCommentsList({
         {/* Expanded thread detail */}
         {isExpanded && (
           <div className="border-l-2 border-accent ml-2 mb-2">
-            {/* Navigate to text */}
-            <button
-              onClick={() => navigateToComment(root.id)}
-              className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Go to text &rarr;
-            </button>
+            {/* Navigate to text or orphaned warning */}
+            {isOrphaned ? (
+              <div className="px-3 py-1.5 text-xs text-muted-foreground">
+                Annotated text was deleted
+              </div>
+            ) : (
+              <button
+                onClick={() => navigateToComment(root.id)}
+                className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Go to text &rarr;
+              </button>
+            )}
 
             {/* Date */}
             <div className="px-3 pb-1 text-xs text-muted-foreground">
@@ -348,57 +391,62 @@ export function SidebarCommentsList({
               </div>
             ))}
 
-            {/* Reply input */}
-            <div className="px-3 py-2 border-t border-border/50">
-              <Input
-                ref={replyInputRef}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleAddReply(root.id)
-                  }
-                  if (e.key === 'Escape') {
-                    e.preventDefault()
-                    e.nativeEvent.stopImmediatePropagation()
-                    setExpandedThreadId(null)
-                    setReplyText('')
-                    listRef.current?.focus()
-                  }
-                }}
-                placeholder="Reply..."
-                className="h-7 text-xs"
-              />
-            </div>
+            {/* Reply input - hide for orphaned comments */}
+            {!isOrphaned && (
+              <div className="px-3 py-2 border-t border-border/50">
+                <Input
+                  ref={replyInputRef}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleAddReply(root.id)
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      e.nativeEvent.stopImmediatePropagation()
+                      setExpandedThreadId(null)
+                      setReplyText('')
+                      listRef.current?.focus()
+                    }
+                  }}
+                  placeholder="Reply..."
+                  className="h-7 text-xs"
+                />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="px-3 py-1.5 border-t border-border/50 flex gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleResolve(root.id)}
-                className="h-7 text-xs flex-1"
-              >
-                {root.resolved ? (
-                  <>
-                    <MessageSquare className="h-3 w-3 mr-1" />
-                    Reopen
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3 w-3 mr-1" />
-                    Resolve
-                  </>
-                )}
-              </Button>
+              {!isOrphaned && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleResolve(root.id)}
+                  className="h-7 text-xs flex-1"
+                >
+                  {root.resolved ? (
+                    <>
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Reopen
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      Resolve
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDelete(root.id)}
-                className="h-7 text-xs text-destructive hover:text-destructive"
+                className={`h-7 text-xs text-destructive hover:text-destructive ${isOrphaned ? 'flex-1' : ''}`}
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2 className="h-3 w-3 mr-1" />
+                {isOrphaned && 'Delete'}
               </Button>
             </div>
           </div>
@@ -455,6 +503,26 @@ export function SidebarCommentsList({
               Open ({openThreads.length})
             </div>
             {openThreads.map(({ root, replies }) => renderThread(root, replies, false))}
+          </div>
+        )}
+
+        {/* Orphaned comments section */}
+        {orphanedThreads.length > 0 && (
+          <div className="p-2 border-t">
+            <div className="flex items-center justify-between px-2 py-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                Orphaned ({orphanedThreads.length})
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCleanupOrphaned}
+                className="h-6 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clean up all
+              </Button>
+            </div>
+            {orphanedThreads.map(({ root, replies }) => renderThread(root, replies, false, true))}
           </div>
         )}
 
