@@ -1,7 +1,6 @@
 'use client'
 
 import { EditorContent as TiptapEditorContent, type Editor } from '@tiptap/react'
-import { EditorBubbleMenu } from './EditorBubbleMenu'
 import { EditorContextMenu } from './EditorContextMenu'
 
 interface EditorContentProps {
@@ -19,10 +18,7 @@ export function EditorContent({ editor, onAddComment, onFindReplace, onInsertVar
       onFindReplace={onFindReplace}
       onInsertVariable={onInsertVariable}
     >
-      <div>
-        {editor && <EditorBubbleMenu editor={editor} onAddComment={onAddComment} />}
-        <TiptapEditorContent editor={editor} />
-      </div>
+      <TiptapEditorContent editor={editor} />
     </EditorContextMenu>
   )
 }

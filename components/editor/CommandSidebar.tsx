@@ -111,6 +111,7 @@ export function CommandSidebar({
         onBack={() => onModeChange('commands')}
         onClose={close}
         addMode={addCommentMode}
+        onAddModeChange={onAddCommentModeChange}
         initialExpandedId={initialExpandedCommentId}
       />
     )

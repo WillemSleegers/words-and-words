@@ -72,6 +72,7 @@ const baseShortcutGroups: ShortcutGroup[] = [
       { keys: ['Mod', 'Z'], description: 'Undo' },
       { keys: ['Mod', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Mod', 'K'], description: 'Insert link' },
+      { keys: ['Mod', 'Shift', 'M'], description: 'Add comment' },
       { keys: ['Mod', 'A'], description: 'Select all' },
     ],
   },

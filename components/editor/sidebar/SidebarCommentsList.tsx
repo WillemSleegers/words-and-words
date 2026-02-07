@@ -15,6 +15,7 @@ interface SidebarCommentsListProps {
   onBack: () => void
   onClose: () => void
   addMode?: boolean
+  onAddModeChange?: (addMode: boolean) => void
   initialExpandedId?: string | null
 }
 
@@ -29,6 +30,7 @@ export function SidebarCommentsList({
   onBack,
   onClose,
   addMode,
+  onAddModeChange,
   initialExpandedId,
 }: SidebarCommentsListProps) {
   const [newCommentText, setNewCommentText] = useState('')
@@ -128,12 +130,12 @@ export function SidebarCommentsList({
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- only on mount/unmount
 
-  // Focus the comment input (only in add mode)
+  // Focus the comment input once when entering add mode
   useEffect(() => {
-    if (addMode && canComment) {
+    if (addMode) {
       commentInputRef.current?.focus()
     }
-  }, [addMode, canComment])
+  }, [addMode])
 
   const rootComments = comments.filter(c => c.parentId === null)
   const threads = rootComments.map(root => ({
@@ -155,12 +157,13 @@ export function SidebarCommentsList({
     ...(showResolved ? resolvedThreads.map(t => t.root.id) : []),
   ]
 
-  // Focus the list container when not in add mode and no thread is expanded
+  // Focus the list container when a thread is collapsed (not when addMode changes,
+  // to avoid stealing focus from the editor after adding a comment)
   useEffect(() => {
-    if (!addMode && !expandedThreadId && listRef.current) {
+    if (!expandedThreadId && !addMode && listRef.current) {
       listRef.current.focus()
     }
-  }, [addMode, expandedThreadId])
+  }, [expandedThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus reply input when a thread is expanded
   useEffect(() => {
@@ -214,13 +217,15 @@ export function SidebarCommentsList({
 
     if (navigableThreadIds.length === 0) return
 
-    if (e.key === 'Tab') {
+    if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
       e.preventDefault()
-      if (e.shiftKey) {
-        setSelectedIndex(prev => Math.max(prev - 1, 0))
-      } else {
-        setSelectedIndex(prev => Math.min(prev + 1, navigableThreadIds.length - 1))
-      }
+      setSelectedIndex(prev => Math.min(prev + 1, navigableThreadIds.length - 1))
+      requestAnimationFrame(() => {
+        listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+      })
+    } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+      e.preventDefault()
+      setSelectedIndex(prev => Math.max(prev - 1, 0))
       requestAnimationFrame(() => {
         listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' })
       })
@@ -260,6 +265,7 @@ export function SidebarCommentsList({
     editor.chain().focus().setComment(commentId).setTextSelection(to).run()
     onCommentsChange([...comments, newComment])
     setNewCommentText('')
+    onAddModeChange?.(false)
   }
 
   function handleAddReply(threadId: string) {
@@ -460,8 +466,8 @@ export function SidebarCommentsList({
       <SidebarHeader title="Comments" onBack={onBack} onClose={onClose} />
 
       <div ref={listRef} className="flex-1 overflow-y-auto outline-none" tabIndex={-1} onKeyDown={handleListKeyDown}>
-        {/* Add comment section - show when in add mode and cursor is in text */}
-        {addMode && canComment && (
+        {/* Add comment section - show when in add mode */}
+        {addMode && (
           <div className="p-3 border-b bg-muted/30">
             <div className="flex gap-2">
               <Input
@@ -475,13 +481,13 @@ export function SidebarCommentsList({
                     handleAddComment()
                   }
                 }}
-                placeholder="Add a comment..."
+                placeholder={canComment ? "Add a comment..." : "Select text to comment on..."}
                 className="h-8 flex-1"
               />
               <Button
                 size="sm"
                 onClick={handleAddComment}
-                disabled={!newCommentText.trim()}
+                disabled={!canComment || !newCommentText.trim()}
               >
                 Add
               </Button>
@@ -490,7 +496,7 @@ export function SidebarCommentsList({
         )}
 
         {/* No comments state */}
-        {threads.length === 0 && !(addMode && canComment) && (
+        {threads.length === 0 && !addMode && (
           <div className="text-center text-muted-foreground text-sm py-8 px-4">
             No comments yet. Select text and add a comment.
           </div>

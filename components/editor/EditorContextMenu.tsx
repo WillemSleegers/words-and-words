@@ -235,7 +235,7 @@ export function EditorContextMenu({
         )}
 
         {/* Comment */}
-        {onAddComment && editorState.hasSelection && (
+        {onAddComment && (
           <>
             <ContextMenuSeparator />
             <ContextMenuItem onSelect={onAddComment}>

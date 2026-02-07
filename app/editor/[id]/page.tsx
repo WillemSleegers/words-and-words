@@ -109,6 +109,13 @@ export default function EditorPage({ params }: EditorPageProps) {
         setSidebarOpen(true)
         setSidebarMode("find")
       }
+      // Add comment with Cmd+Shift+M
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "m" && settings.showComments) {
+        e.preventDefault()
+        setAddCommentMode(true)
+        setSidebarOpen(true)
+        setSidebarMode("comments")
+      }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
