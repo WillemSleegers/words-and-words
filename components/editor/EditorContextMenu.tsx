@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useEditorState } from '@tiptap/react'
 import {
@@ -80,6 +81,10 @@ export function EditorContextMenu({
     },
   })
 
+  // Defer sidebar-opening actions to onCloseAutoFocus so they execute
+  // after the context menu is fully closed and won't have focus stolen
+  const pendingActionRef = useRef<(() => void) | null>(null)
+
   if (!editor || !editorState) {
     return <>{children}</>
   }
@@ -89,7 +94,17 @@ export function EditorContextMenu({
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-56">
+      <ContextMenuContent
+        className="w-56"
+        onCloseAutoFocus={(e) => {
+          if (pendingActionRef.current) {
+            e.preventDefault()
+            const action = pendingActionRef.current
+            pendingActionRef.current = null
+            action()
+          }
+        }}
+      >
         {/* Formatting submenu */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
@@ -238,7 +253,7 @@ export function EditorContextMenu({
         {onAddComment && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem onSelect={onAddComment}>
+            <ContextMenuItem onSelect={() => { pendingActionRef.current = onAddComment }}>
               <MessageSquare className="mr-2 size-4" />
               Add Comment
             </ContextMenuItem>
@@ -249,7 +264,7 @@ export function EditorContextMenu({
         {onFindReplace && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem onSelect={onFindReplace}>
+            <ContextMenuItem onSelect={() => { pendingActionRef.current = onFindReplace }}>
               <Search className="mr-2 size-4" />
               Find & Replace
               <ContextMenuShortcut>⌘F</ContextMenuShortcut>
