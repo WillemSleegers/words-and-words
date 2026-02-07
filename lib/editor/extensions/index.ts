@@ -16,6 +16,7 @@ import { VariableNode } from './variable-node'
 import { Title, Subtitle } from './title-subtitle'
 import { SearchHighlight } from './search-highlight'
 import { CommentMark } from './comment-mark'
+import { SelectionDecoration } from './selection-decoration'
 
 export const extensions = [
   StarterKit.configure({
@@ -60,4 +61,5 @@ export const extensions = [
   Subtitle,
   SearchHighlight,
   CommentMark,
+  SelectionDecoration,
 ]
