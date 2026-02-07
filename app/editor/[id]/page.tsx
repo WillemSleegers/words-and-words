@@ -43,6 +43,7 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("commands")
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null)
   const [addCommentMode, setAddCommentMode] = useState(false)
+  const [commentFocusKey, setCommentFocusKey] = useState(0)
   const { settings, updateSettings } = useSettings()
 
   const handleCommentClick = (commentId: string) => {
@@ -113,6 +114,7 @@ export default function EditorPage({ params }: EditorPageProps) {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "m" && settings.showComments) {
         e.preventDefault()
         setAddCommentMode(true)
+        setCommentFocusKey(k => k + 1)
         setSidebarOpen(true)
         setSidebarMode("comments")
       }
@@ -269,6 +271,7 @@ export default function EditorPage({ params }: EditorPageProps) {
                   settings.showComments
                     ? () => {
                         setAddCommentMode(true)
+                        setCommentFocusKey(k => k + 1)
                         setSidebarOpen(true)
                         setSidebarMode("comments")
                       }
@@ -304,6 +307,7 @@ export default function EditorPage({ params }: EditorPageProps) {
           onCommentsChange={handleCommentsChange}
           addCommentMode={addCommentMode}
           onAddCommentModeChange={setAddCommentMode}
+          commentFocusKey={commentFocusKey}
           initialExpandedCommentId={expandedCommentId}
         />
       )}

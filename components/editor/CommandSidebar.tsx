@@ -29,6 +29,7 @@ interface CommandSidebarProps {
   onCommentsChange: (comments: Comment[]) => void
   addCommentMode: boolean
   onAddCommentModeChange: (addMode: boolean) => void
+  commentFocusKey?: number
   initialExpandedCommentId?: string | null
 }
 
@@ -49,6 +50,7 @@ export function CommandSidebar({
   onCommentsChange,
   addCommentMode,
   onAddCommentModeChange,
+  commentFocusKey,
   initialExpandedCommentId,
 }: CommandSidebarProps) {
   // Handle escape key to close sidebar
@@ -112,6 +114,7 @@ export function CommandSidebar({
         onClose={close}
         addMode={addCommentMode}
         onAddModeChange={onAddCommentModeChange}
+        focusKey={commentFocusKey}
         initialExpandedId={initialExpandedCommentId}
       />
     )

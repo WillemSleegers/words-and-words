@@ -16,6 +16,7 @@ interface SidebarCommentsListProps {
   onClose: () => void
   addMode?: boolean
   onAddModeChange?: (addMode: boolean) => void
+  focusKey?: number
   initialExpandedId?: string | null
 }
 
@@ -31,6 +32,7 @@ export function SidebarCommentsList({
   onClose,
   addMode,
   onAddModeChange,
+  focusKey,
   initialExpandedId,
 }: SidebarCommentsListProps) {
   const [newCommentText, setNewCommentText] = useState('')
@@ -128,14 +130,14 @@ export function SidebarCommentsList({
         editor.commands.clearCommentPreview()
       }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- only on mount/unmount
+  }, [focusKey]) // eslint-disable-line react-hooks/exhaustive-deps -- run on mount and when re-triggered
 
-  // Focus the comment input once when entering add mode
+  // Focus the comment input when entering add mode or re-triggered
   useEffect(() => {
     if (addMode) {
       commentInputRef.current?.focus()
     }
-  }, [addMode])
+  }, [addMode, focusKey])
 
   const rootComments = comments.filter(c => c.parentId === null)
   const threads = rootComments.map(root => ({

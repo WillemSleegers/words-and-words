@@ -11,6 +11,7 @@
   - Might need a custom click handler or accept the trade-off
 - [ ] Can we wrap content of a header in a div element or something equivalent so we can handle collapsing content better (ie animate it better)?
 - [x] Move the collapse chevron to collapse sections to the left of the header instead of the right.
+- [ ] Improve selections; they are not always predictable
 
 ## Feature Ideas
 
