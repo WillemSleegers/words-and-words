@@ -10,7 +10,6 @@
     3. Cmd/Ctrl+click to follow - but Tiptap doesn't have built-in support for this
   - Might need a custom click handler or accept the trade-off
 - [ ] Can we wrap content of a header in a div element or something equivalent so we can handle collapsing content better (ie animate it better)?
-- [x] Move the collapse chevron to collapse sections to the left of the header instead of the right.
 - [ ] Improve selections; they are not always predictable
 
 ## Feature Ideas
@@ -109,26 +108,3 @@
 - [ ] Add skip-to-content link for keyboard navigation
 - [ ] Ensure sufficient color contrast for search highlights
 - [ ] Add aria-labels to TOC buttons
-
-## Recently Completed
-
-- [x] Find & Replace feature with floating bar UI
-- [x] Auto-save visual indicator ("Saving...", "Saved")
-- [x] Metadata title fix (was "Create Next App")
-- [x] Accessibility: aria-labels on icon buttons
-- [x] Prefers-reduced-motion support in CSS and JavaScript
-
-## Previously Completed
-
-- [x] Add a button to the top right that launches the command palette.
-- [x] Create a toolbar with all the typical text editor options. Make it a dialog window that shows in the center of the screen. This could be used to select options on a phone.
-  - Created FormattingToolbar but removed it - couldn't get active state indicators working properly
-  - All formatting options are available via the command palette instead
-- [x] Remove the insert table and insert image options from the top right. It should be included in the toolbar mentioned in the previous todo item and via the command palette, so we don't need it anymore as separate buttons.
-- [x] You can't tell whether the text is currently set to, for example, bold. Can we think of something to address this?
-  - Implemented bubble menu with `useEditorState` hook for reactive active states
-  - Shows formatting buttons with active state indicators when text is selected
-- [x] Do we still need the settings dialog?
-  - Removed - all settings (theme, counter visibility) are available via command palette
-- [x] Are there any other online text editors that use a command palette?
-  - Notion, Linear, Obsidian, Typora
