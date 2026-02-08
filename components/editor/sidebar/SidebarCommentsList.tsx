@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { type Editor, useEditorState } from '@tiptap/react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronRight, MessageSquare, Trash2 } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import type { Comment } from '@/lib/documents/types'
 import { SidebarHeader } from './SidebarHeader'
+import { CommentThreadDetail } from './CommentThreadDetail'
 
 interface SidebarCommentsListProps {
   editor: Editor | null
@@ -17,7 +18,8 @@ interface SidebarCommentsListProps {
   addMode?: boolean
   onAddModeChange?: (addMode: boolean) => void
   focusKey?: number
-  initialExpandedId?: string | null
+  activeCommentId?: string | null
+  onActiveCommentIdChange?: (id: string | null) => void
 }
 
 function generateCommentId(): string {
@@ -33,16 +35,16 @@ export function SidebarCommentsList({
   addMode,
   onAddModeChange,
   focusKey,
-  initialExpandedId,
+  activeCommentId,
+  onActiveCommentIdChange,
 }: SidebarCommentsListProps) {
   const [newCommentText, setNewCommentText] = useState('')
   const [showResolved, setShowResolved] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(initialExpandedId ?? null)
-  const [replyText, setReplyText] = useState('')
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
-  const replyInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const expandedViaKeyboard = useRef(false)
 
   // Reactively track editor selection
   const selectionInfo = useEditorState({
@@ -50,10 +52,7 @@ export function SidebarCommentsList({
     selector: ({ editor: e }) => {
       if (!e) return { hasSelection: false }
       const { from, to } = e.state.selection
-      if (from !== to) {
-        return { hasSelection: true }
-      }
-      return { hasSelection: false }
+      return { hasSelection: from !== to }
     },
   })
   const hasSelection = selectionInfo?.hasSelection ?? false
@@ -100,8 +99,8 @@ export function SidebarCommentsList({
     return { from: base + start, to: base + end }
   })()
 
-  // canComment if there's a selection OR a word at cursor
   const canComment = hasSelection || wordRange !== null
+
   // Show preview highlight on mount, clear on unmount (only in add mode)
   useEffect(() => {
     if (!editor || !addMode) return
@@ -109,7 +108,6 @@ export function SidebarCommentsList({
     if (from !== to) {
       editor.commands.setCommentPreview(from, to)
     } else {
-      // Compute word range at cursor inside the effect
       const $pos = editor.state.doc.resolve(from)
       const parent = $pos.parent
       if (parent.isTextblock) {
@@ -130,7 +128,7 @@ export function SidebarCommentsList({
         editor.commands.clearCommentPreview()
       }
     }
-  }, [focusKey]) // eslint-disable-line react-hooks/exhaustive-deps -- run on mount and when re-triggered
+  }, [focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus the comment input when entering add mode or re-triggered
   useEffect(() => {
@@ -139,6 +137,7 @@ export function SidebarCommentsList({
     }
   }, [addMode, focusKey])
 
+  // Thread grouping
   const rootComments = comments.filter(c => c.parentId === null)
   const threads = rootComments.map(root => ({
     root,
@@ -152,67 +151,107 @@ export function SidebarCommentsList({
   const openThreads = nonOrphanedThreads.filter(t => !t.root.resolved)
   const resolvedThreads = nonOrphanedThreads.filter(t => t.root.resolved)
 
-  // Flat list of navigable thread IDs: open threads + resolved (if expanded)
   const navigableThreadIds = [
     ...openThreads.map(t => t.root.id),
     ...orphanedThreads.map(t => t.root.id),
     ...(showResolved ? resolvedThreads.map(t => t.root.id) : []),
   ]
 
-  // Focus the list container when a thread is collapsed (not when addMode changes,
-  // to avoid stealing focus from the editor after adding a comment)
+  // Focus management when a thread is expanded or collapsed
   useEffect(() => {
-    if (!expandedThreadId && !addMode && listRef.current) {
+    if (addMode) return
+    if (expandedThreadId) {
+      if (expandedViaKeyboard.current) {
+        expandedViaKeyboard.current = false
+        requestAnimationFrame(() => {
+          const firstItem = listRef.current?.querySelector('[data-thread-item]') as HTMLElement | null
+          if (firstItem) firstItem.focus()
+          else listRef.current?.focus()
+        })
+      }
+    } else if (listRef.current) {
       listRef.current.focus()
     }
   }, [expandedThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Focus reply input when a thread is expanded
-  useEffect(() => {
-    if (expandedThreadId) {
-      replyInputRef.current?.focus()
-    }
-  }, [expandedThreadId])
 
   // Reset selection when thread list changes
   useEffect(() => {
     setSelectedIndex(0)
   }, [navigableThreadIds.length])
 
-  // Set active comment highlight when expanded
+  // Sync selectedIndex from activeCommentId (set when clicking a comment in the editor)
+  useEffect(() => {
+    if (!activeCommentId) return
+    setExpandedThreadId(null)
+    const idx = navigableThreadIds.indexOf(activeCommentId)
+    if (idx >= 0) {
+      setSelectedIndex(idx)
+      requestAnimationFrame(() => {
+        listRef.current?.focus()
+        listRef.current?.querySelector(`[data-selected="true"]`)?.scrollIntoView({ block: 'nearest' })
+      })
+    }
+  }, [activeCommentId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Highlight the active comment's text in the editor
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
-    if (expandedThreadId) {
-      editor.commands.setActiveComment(expandedThreadId)
-    } else {
-      editor.commands.setActiveComment(null)
-    }
+    const activeId = navigableThreadIds[selectedIndex] ?? null
+    editor.commands.setActiveComment(activeId)
     return () => {
       if (editor && !editor.isDestroyed) {
         editor.commands.setActiveComment(null)
       }
     }
-  }, [expandedThreadId, editor])
+  }, [selectedIndex, editor]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleThread(threadId: string) {
-    if (expandedThreadId === threadId) {
-      setExpandedThreadId(null)
-      setReplyText('')
-    } else {
-      setExpandedThreadId(threadId)
-      setReplyText('')
-    }
+    setExpandedThreadId(expandedThreadId === threadId ? null : threadId)
+    const idx = navigableThreadIds.indexOf(threadId)
+    if (idx >= 0) setSelectedIndex(idx)
+  }
+
+  function collapseThread() {
+    setExpandedThreadId(null)
+    listRef.current?.focus()
   }
 
   function handleListKeyDown(e: React.KeyboardEvent) {
+    const tag = (e.target as HTMLElement).tagName
+    if (tag === 'INPUT') return
+
     if (expandedThreadId) {
-      // When a thread is expanded, Escape collapses it
       if (e.key === 'Escape') {
         e.preventDefault()
         e.nativeEvent.stopImmediatePropagation()
-        setExpandedThreadId(null)
-        setReplyText('')
-        listRef.current?.focus()
+        collapseThread()
+        return
+      }
+
+      // Navigate between interactive elements inside the expanded thread
+      const items = Array.from(
+        listRef.current?.querySelectorAll('[data-thread-item]') ?? []
+      ) as HTMLElement[]
+      if (items.length === 0) return
+
+      const currentIdx = items.findIndex(el => el === document.activeElement)
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault()
+        const next = currentIdx < 0 ? 0 : Math.min(currentIdx + 1, items.length - 1)
+        items[next].focus()
+        items[next].scrollIntoView({ block: 'nearest' })
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+        e.preventDefault()
+        const prev = currentIdx < 0 ? 0 : Math.max(currentIdx - 1, 0)
+        items[prev].focus()
+        items[prev].scrollIntoView({ block: 'nearest' })
+      } else if (e.key === 'Enter') {
+        const active = document.activeElement as HTMLElement
+        if (active?.hasAttribute('data-thread-item') && active.tagName !== 'BUTTON') {
+          e.preventDefault()
+          active.click()
+        }
       }
       return
     }
@@ -221,18 +260,23 @@ export function SidebarCommentsList({
 
     if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
       e.preventDefault()
-      setSelectedIndex(prev => Math.min(prev + 1, navigableThreadIds.length - 1))
+      const next = Math.min(selectedIndex + 1, navigableThreadIds.length - 1)
+      setSelectedIndex(next)
+      onActiveCommentIdChange?.(navigableThreadIds[next] ?? null)
       requestAnimationFrame(() => {
         listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' })
       })
     } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
       e.preventDefault()
-      setSelectedIndex(prev => Math.max(prev - 1, 0))
+      const next = Math.max(selectedIndex - 1, 0)
+      setSelectedIndex(next)
+      onActiveCommentIdChange?.(navigableThreadIds[next] ?? null)
       requestAnimationFrame(() => {
         listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' })
       })
     } else if (e.key === 'Enter') {
       e.preventDefault()
+      expandedViaKeyboard.current = true
       const threadId = navigableThreadIds[selectedIndex]
       if (threadId) toggleThread(threadId)
     }
@@ -243,7 +287,6 @@ export function SidebarCommentsList({
 
     let { from, to } = editor.state.selection
 
-    // If no selection, use word range
     if (from === to) {
       if (!wordRange) return
       from = wordRange.from
@@ -251,7 +294,6 @@ export function SidebarCommentsList({
       editor.commands.setTextSelection({ from, to })
     }
 
-    // Clear preview before applying the real mark
     editor.commands.clearCommentPreview()
 
     const commentId = generateCommentId()
@@ -270,41 +312,15 @@ export function SidebarCommentsList({
     onAddModeChange?.(false)
   }
 
-  function handleAddReply(threadId: string) {
-    if (!replyText.trim()) return
-
-    const newReply: Comment = {
-      id: generateCommentId(),
-      text: replyText.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      resolved: false,
-      parentId: threadId,
-    }
-
-    onCommentsChange([...comments, newReply])
-    setReplyText('')
-  }
-
-  function handleResolve(threadId: string) {
-    const newComments = comments.map(c =>
-      c.id === threadId ? { ...c, resolved: !c.resolved, updatedAt: new Date() } : c
-    )
-    onCommentsChange(newComments)
-  }
-
   function handleDelete(threadId: string) {
     const newComments = comments.filter(
       c => c.id !== threadId && c.parentId !== threadId
     )
     onCommentsChange(newComments)
-
     if (editor) {
       editor.commands.removeComment(threadId)
     }
-
     setExpandedThreadId(null)
-    setReplyText('')
   }
 
   function handleCleanupOrphaned() {
@@ -314,7 +330,6 @@ export function SidebarCommentsList({
     )
     onCommentsChange(newComments)
     setExpandedThreadId(null)
-    setReplyText('')
   }
 
   function navigateToComment(commentId: string) {
@@ -347,17 +362,17 @@ export function SidebarCommentsList({
     const isExpanded = expandedThreadId === root.id
 
     return (
-      <div key={root.id} className={(isResolved || isOrphaned) && !isExpanded ? 'opacity-60' : ''}>
-        {/* Thread summary / toggle */}
-        <button
-          data-selected={isSelected && !expandedThreadId}
-          onClick={() => toggleThread(root.id)}
-          className={`w-full text-left px-2 py-2 rounded-md ${
-            isExpanded ? 'bg-accent' : isSelected && !expandedThreadId ? 'bg-accent' : 'hover:bg-accent'
-          }`}
-        >
-          <div className="text-sm line-clamp-2 flex items-center gap-1">
-            {isResolved && !isOrphaned && <Check className="h-3 w-3 shrink-0" />}
+      <div
+        key={root.id}
+        data-selected={isSelected}
+        onClick={() => toggleThread(root.id)}
+        className={`mx-2 mt-1.5 first:mt-0 rounded-lg border cursor-pointer transition-colors ${
+          isSelected ? 'border-primary' : 'border-border hover:border-muted-foreground/30'
+        } ${(isResolved || isOrphaned) && !isExpanded ? 'opacity-60' : ''}`}
+      >
+        <div className="px-3 py-2">
+          <div className={`text-sm ${isSelected ? '' : 'truncate'}`}>
+            {isResolved && !isOrphaned && <Check className="h-3 w-3 inline shrink-0 align-middle mr-1" />}
             {root.text}
           </div>
           {!isExpanded && replies.length > 0 && (
@@ -365,99 +380,18 @@ export function SidebarCommentsList({
               {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
             </div>
           )}
-        </button>
+        </div>
 
-        {/* Expanded thread detail */}
         {isExpanded && (
-          <div className="border-l-2 border-accent ml-2 mb-2">
-            {/* Navigate to text or orphaned warning */}
-            {isOrphaned ? (
-              <div className="px-3 py-1.5 text-xs text-muted-foreground">
-                Annotated text was deleted
-              </div>
-            ) : (
-              <button
-                onClick={() => navigateToComment(root.id)}
-                className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                Go to text &rarr;
-              </button>
-            )}
-
-            {/* Date */}
-            <div className="px-3 pb-1 text-xs text-muted-foreground">
-              {new Date(root.createdAt).toLocaleDateString()}
-            </div>
-
-            {/* Replies */}
-            {replies.map(reply => (
-              <div key={reply.id} className="px-3 py-1.5 border-t border-border/50">
-                <div className="text-sm">{reply.text}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(reply.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-
-            {/* Reply input - hide for orphaned comments */}
-            {!isOrphaned && (
-              <div className="px-3 py-2 border-t border-border/50">
-                <Input
-                  ref={replyInputRef}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleAddReply(root.id)
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault()
-                      e.nativeEvent.stopImmediatePropagation()
-                      setExpandedThreadId(null)
-                      setReplyText('')
-                      listRef.current?.focus()
-                    }
-                  }}
-                  placeholder="Reply..."
-                  className="h-7 text-xs"
-                />
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="px-3 py-1.5 border-t border-border/50 flex gap-1.5">
-              {!isOrphaned && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleResolve(root.id)}
-                  className="h-7 text-xs flex-1"
-                >
-                  {root.resolved ? (
-                    <>
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      Reopen
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3 w-3 mr-1" />
-                      Resolve
-                    </>
-                  )}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(root.id)}
-                className={`h-7 text-xs text-destructive hover:text-destructive ${isOrphaned ? 'flex-1' : ''}`}
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                {isOrphaned && 'Delete'}
-              </Button>
-            </div>
-          </div>
+          <CommentThreadDetail
+            root={root}
+            replies={replies}
+            isOrphaned={isOrphaned}
+            comments={comments}
+            onCommentsChange={onCommentsChange}
+            onNavigateToComment={navigateToComment}
+            onDelete={handleDelete}
+          />
         )}
       </div>
     )
@@ -468,7 +402,6 @@ export function SidebarCommentsList({
       <SidebarHeader title="Comments" onBack={onBack} onClose={onClose} />
 
       <div ref={listRef} className="flex-1 overflow-y-auto outline-none" tabIndex={-1} onKeyDown={handleListKeyDown}>
-        {/* Add comment section - show when in add mode */}
         {addMode && (
           <div className="p-3 border-b bg-muted/30">
             <div className="flex gap-2">
@@ -497,29 +430,23 @@ export function SidebarCommentsList({
           </div>
         )}
 
-        {/* No comments state */}
         {threads.length === 0 && !addMode && (
           <div className="text-center text-muted-foreground text-sm py-8 px-4">
             No comments yet. Select text and add a comment.
           </div>
         )}
 
-        {/* Open comments section */}
         {openThreads.length > 0 && (
-          <div className="p-2">
-            <div className="text-xs font-medium text-muted-foreground px-2 py-1">
-              Open ({openThreads.length})
-            </div>
+          <div className="py-2">
             {openThreads.map(({ root, replies }) => renderThread(root, replies, false))}
           </div>
         )}
 
-        {/* Orphaned comments section */}
         {orphanedThreads.length > 0 && (
-          <div className="p-2 border-t">
-            <div className="flex items-center justify-between px-2 py-1">
+          <div className="py-2">
+            <div className="flex items-center justify-between px-4 py-1">
               <span className="text-xs font-medium text-muted-foreground">
-                Orphaned ({orphanedThreads.length})
+                Orphaned
               </span>
               <Button
                 variant="ghost"
@@ -534,16 +461,17 @@ export function SidebarCommentsList({
           </div>
         )}
 
-        {/* Resolved comments section */}
         {resolvedThreads.length > 0 && (
-          <div className="p-2 border-t">
-            <button
+          <div className="py-2">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setShowResolved(!showResolved)}
-              className="w-full flex items-center justify-between px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="w-full justify-between h-auto px-4 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <span>Resolved ({resolvedThreads.length})</span>
               <ChevronRight className={`h-4 w-4 transition-transform ${showResolved ? 'rotate-90' : ''}`} />
-            </button>
+            </Button>
             {showResolved && resolvedThreads.map(({ root, replies }) => renderThread(root, replies, true))}
           </div>
         )}

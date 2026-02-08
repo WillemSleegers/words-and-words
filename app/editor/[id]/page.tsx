@@ -41,14 +41,41 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [showVariables, setShowVariables] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("commands")
-  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null)
   const [addCommentMode, setAddCommentMode] = useState(false)
   const [commentFocusKey, setCommentFocusKey] = useState(0)
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
   const { settings, updateSettings } = useSettings()
 
   const handleCommentClick = (commentId: string) => {
-    setExpandedCommentId(commentId)
+    setActiveCommentId(commentId)
     setAddCommentMode(false)
+    setSidebarOpen(true)
+    setSidebarMode("comments")
+  }
+
+  function handleAddComment() {
+    if (!editor) return
+
+    // Check if cursor/selection is inside an existing comment
+    const { from } = editor.state.selection
+    const $from = editor.state.doc.resolve(from)
+    let existingCommentId: string | null = null
+
+    for (const node of [$from.nodeAfter, $from.nodeBefore]) {
+      if (existingCommentId) break
+      if (node?.isText) {
+        const mark = node.marks.find(m => m.type.name === 'comment')
+        if (mark) existingCommentId = mark.attrs.commentId as string
+      }
+    }
+
+    if (existingCommentId) {
+      setActiveCommentId(existingCommentId)
+      setAddCommentMode(false)
+    } else {
+      setAddCommentMode(true)
+      setCommentFocusKey(k => k + 1)
+    }
     setSidebarOpen(true)
     setSidebarMode("comments")
   }
@@ -113,10 +140,7 @@ export default function EditorPage({ params }: EditorPageProps) {
       // Add comment with Cmd+Shift+M
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "m" && settings.showComments) {
         e.preventDefault()
-        setAddCommentMode(true)
-        setCommentFocusKey(k => k + 1)
-        setSidebarOpen(true)
-        setSidebarMode("comments")
+        handleAddComment()
       }
     }
     window.addEventListener("keydown", handleKeyDown)
@@ -268,14 +292,7 @@ export default function EditorPage({ params }: EditorPageProps) {
               <EditorContent
                 editor={editor}
                 onAddComment={
-                  settings.showComments
-                    ? () => {
-                        setAddCommentMode(true)
-                        setCommentFocusKey(k => k + 1)
-                        setSidebarOpen(true)
-                        setSidebarMode("comments")
-                      }
-                    : undefined
+                  settings.showComments ? handleAddComment : undefined
                 }
                 onFindReplace={() => {
                   setSidebarOpen(true)
@@ -308,7 +325,8 @@ export default function EditorPage({ params }: EditorPageProps) {
           addCommentMode={addCommentMode}
           onAddCommentModeChange={setAddCommentMode}
           commentFocusKey={commentFocusKey}
-          initialExpandedCommentId={expandedCommentId}
+          activeCommentId={activeCommentId}
+          onActiveCommentIdChange={setActiveCommentId}
         />
       )}
 
