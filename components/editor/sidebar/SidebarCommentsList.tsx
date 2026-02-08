@@ -128,7 +128,7 @@ export function SidebarCommentsList({
         editor.commands.clearCommentPreview()
       }
     }
-  }, [focusKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editor, addMode, focusKey])
 
   // Focus the comment input when entering add mode or re-triggered
   useEffect(() => {
@@ -172,7 +172,7 @@ export function SidebarCommentsList({
     } else if (listRef.current) {
       listRef.current.focus()
     }
-  }, [expandedThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [expandedThreadId, addMode])
 
   // Reset selection when thread list changes
   useEffect(() => {
@@ -191,7 +191,7 @@ export function SidebarCommentsList({
         listRef.current?.querySelector(`[data-selected="true"]`)?.scrollIntoView({ block: 'nearest' })
       })
     }
-  }, [activeCommentId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeCommentId, navigableThreadIds])
 
   // Highlight the active comment's text in the editor
   useEffect(() => {
@@ -203,7 +203,7 @@ export function SidebarCommentsList({
         editor.commands.setActiveComment(null)
       }
     }
-  }, [selectedIndex, editor]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedIndex, editor, navigableThreadIds])
 
   function toggleThread(threadId: string) {
     setExpandedThreadId(expandedThreadId === threadId ? null : threadId)

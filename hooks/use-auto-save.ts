@@ -62,7 +62,7 @@ export function useAutoSave({
     }, AUTO_SAVE_DELAY_MS)
 
     return () => clearTimeout(timeout)
-  }, [hasUnsavedChanges, content]) // eslint-disable-line react-hooks/exhaustive-deps -- debounce on content changes
+  }, [hasUnsavedChanges, content, document, saveDocument])
 
   return { saveStatus, saveDocument }
 }
